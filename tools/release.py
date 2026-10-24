@@ -33,6 +33,8 @@ def build():
                    '--icon', str(ROOT / 'assets' / CONFIG['icon']), '--paths', str(ROOT / 'src'),
                    '--distpath', str(Path(temporary) / 'output'), '--workpath', str(Path(temporary) / 'work'),
                    '--specpath', temporary]
+        for dependency in ('paramiko', 'cryptography', 'bcrypt', 'PyNaCl', 'cffi'):
+            command += ['--copy-metadata', dependency]
         subprocess.run(command + [str(ROOT / CONFIG['entry'])], check=True)
         (ROOT / 'releases').mkdir(exist_ok=True)
         candidate = ROOT / 'releases' / (CONFIG['exe'] + '.exe.new')
