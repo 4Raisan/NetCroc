@@ -4,3 +4,4 @@
 Pillow==12.3.0
 pystray==0.19.5
 psutil==7.2.2
+paramiko==5.1.0
