@@ -1,0 +1,21 @@
+# Local build outputs and test evidence
+releases/
+build/
+dist/
+test-artifacts/
+*.spec
+*.exe
+*.zip
+
+# Python runtime and caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local settings and operating system files
+.env
+.env.*
+*.log
+Thumbs.db
+Desktop.ini

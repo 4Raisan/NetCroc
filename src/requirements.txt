@@ -1,0 +1,6 @@
+# Source: Windows Python 3.12-3.14 with pip and Tcl/Tk (install separately).
+# EXE release bundles Python and dependencies; no Python install needed.
+# Build only: python -m pip install PyInstaller==6.22.3
+Pillow==12.3.0
+pystray==0.19.5
+psutil==7.2.2
