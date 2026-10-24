@@ -42,6 +42,8 @@ jobs:
         run: python tools/release.py --check
       - name: Run Windows test suite
         run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Validate optional SSH routing core without activating routes
+        run: python tools/check_ssh_routing.py
 
   packaged-app:
     name: Build and check Windows EXE
