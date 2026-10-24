@@ -13,6 +13,33 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.ui import App
 
 class GuiTests(unittest.TestCase):
+    def test_ssh_tab_and_editor_have_all_configuration_pages(self):
+        tab=self.app.dashboard.ssh_tab
+        self.assertEqual(len(self.app.dashboard.notebook.tabs()),8)
+        tab.edit()
+        windows=[w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel)]
+        self.assertEqual(len(windows),1)
+        books=[w for w in windows[0].winfo_children() if isinstance(w,__import__('tkinter').ttk.Notebook)]
+        self.assertEqual(len(books[0].tabs()),4)
+        windows[0].destroy()
+
+    def test_ssh_connect_missing_profile_does_not_start_network(self):
+        tab=self.app.dashboard.ssh_tab
+        with patch('netcroc.ssh_ui.ssh.Session') as session:
+            with self.assertRaises(ValueError): tab.connect()
+            session.assert_not_called()
+
+    def test_ssh_editor_save_is_encrypted_without_connecting(self):
+        import tempfile
+        from netcroc.ssh_tunnel import ProfileStore
+        tab=self.app.dashboard.ssh_tab
+        with tempfile.TemporaryDirectory() as folder:
+            tab.store=ProfileStore(Path(folder))
+            identifier=tab.store.save({'host':'example.com','password':'synthetic-only'})
+            tab.refresh(); self.assertEqual(len(tab.tree.get_children()),1)
+            self.assertNotIn('synthetic-only',str(tab.tree.item(identifier)))
+            self.assertIsNone(tab.session)
+
     def setUp(self):
         # Tk cycles must be finalized on their owning thread, before workers allocate.
         gc.collect()
