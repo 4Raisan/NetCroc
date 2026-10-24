@@ -57,6 +57,8 @@ class Dashboard:
         self.vpn_profiles=[]
         self.vpn_baseline=None
         self.build_live(); self.build_history(); self.build_dns(); self.build_wifi(); self.build_research(); self.build_vpn()
+        from .ssh_ui import SSHTab
+        self.ssh_tab=SSHTab(app,notebook,self.folder,diagnostic=diagnostic)
         self.root.after(250,self.poll)
         self.root.after(30000,self.refresh_active_history)
         if not diagnostic:
@@ -316,6 +318,8 @@ class Dashboard:
         if self.busy:return
         try:
             item=self.selected_vpn()
+            if action=='connect' and self.ssh_tab.session and not self.ssh_tab.session.cancel.is_set():
+                raise ValueError('Disconnect the SSH tunnel before connecting WireGuard.')
             if action in ('connect','disconnect'):self.vpn_store.backend.require_admin()
         except (ValueError,PermissionError) as error:
             messagebox.showerror('VPN',str(error));return
@@ -494,6 +498,7 @@ class Dashboard:
         self.root.after(250,self.poll)
 
     def close(self):
+        self.ssh_tab.close()
         self.stop.set()
         # The monitor owns DB writes. Do not close SQLite while its thread is flushing.
         if hasattr(self,'monitor_thread'):
