@@ -1,0 +1,313 @@
+{
+  "tested_at": "2026-10-24T14:03:42+0530",
+  "scope": "One current connection, no ISP-specific speed improvement proven",
+  "results": [
+    {
+      "isp": "Dialog",
+      "url": "https://www.dialog.lk/",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 2345.69,
+      "samples": [
+        {
+          "url": "https://www.dialog.lk/",
+          "final_url": "https://dialog.lk:443/",
+          "status": 200,
+          "ms": 4048.19,
+          "error": null
+        },
+        {
+          "url": "https://www.dialog.lk/",
+          "final_url": "https://dialog.lk:443/",
+          "status": 200,
+          "ms": 1639.97,
+          "error": null
+        },
+        {
+          "url": "https://www.dialog.lk/",
+          "final_url": "https://dialog.lk:443/",
+          "status": 200,
+          "ms": 2345.69,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Dialog",
+      "url": "https://www.dialog.lk/robots.txt",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 1799.52,
+      "samples": [
+        {
+          "url": "https://www.dialog.lk/robots.txt",
+          "final_url": "https://dialog.lk:443/robots.txt",
+          "status": 200,
+          "ms": 3151.51,
+          "error": null
+        },
+        {
+          "url": "https://www.dialog.lk/robots.txt",
+          "final_url": "https://dialog.lk:443/robots.txt",
+          "status": 200,
+          "ms": 1799.52,
+          "error": null
+        },
+        {
+          "url": "https://www.dialog.lk/robots.txt",
+          "final_url": "https://dialog.lk:443/robots.txt",
+          "status": 200,
+          "ms": 1581.02,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "SLT",
+      "url": "https://www.slt.lk/",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 321.53,
+      "samples": [
+        {
+          "url": "https://www.slt.lk/",
+          "final_url": "https://www.slt.lk/",
+          "status": 200,
+          "ms": 446.7,
+          "error": null
+        },
+        {
+          "url": "https://www.slt.lk/",
+          "final_url": "https://www.slt.lk/",
+          "status": 200,
+          "ms": 264.15,
+          "error": null
+        },
+        {
+          "url": "https://www.slt.lk/",
+          "final_url": "https://www.slt.lk/",
+          "status": 200,
+          "ms": 321.53,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "SLT",
+      "url": "https://www.slt.lk/robots.txt",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 242.33,
+      "samples": [
+        {
+          "url": "https://www.slt.lk/robots.txt",
+          "final_url": "https://www.slt.lk/robots.txt",
+          "status": 200,
+          "ms": 242.33,
+          "error": null
+        },
+        {
+          "url": "https://www.slt.lk/robots.txt",
+          "final_url": "https://www.slt.lk/robots.txt",
+          "status": 200,
+          "ms": 306.48,
+          "error": null
+        },
+        {
+          "url": "https://www.slt.lk/robots.txt",
+          "final_url": "https://www.slt.lk/robots.txt",
+          "status": 200,
+          "ms": 242.09,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Mobitel",
+      "url": "https://www.mobitel.lk/",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 684.26,
+      "samples": [
+        {
+          "url": "https://www.mobitel.lk/",
+          "final_url": "https://www.mobitel.lk/",
+          "status": 200,
+          "ms": 1043.53,
+          "error": null
+        },
+        {
+          "url": "https://www.mobitel.lk/",
+          "final_url": "https://www.mobitel.lk/",
+          "status": 200,
+          "ms": 684.26,
+          "error": null
+        },
+        {
+          "url": "https://www.mobitel.lk/",
+          "final_url": "https://www.mobitel.lk/",
+          "status": 200,
+          "ms": 626.8,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Mobitel",
+      "url": "https://www.mobitel.lk/robots.txt",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 622.58,
+      "samples": [
+        {
+          "url": "https://www.mobitel.lk/robots.txt",
+          "final_url": "https://www.mobitel.lk/robots.txt",
+          "status": 200,
+          "ms": 604.45,
+          "error": null
+        },
+        {
+          "url": "https://www.mobitel.lk/robots.txt",
+          "final_url": "https://www.mobitel.lk/robots.txt",
+          "status": 200,
+          "ms": 622.58,
+          "error": null
+        },
+        {
+          "url": "https://www.mobitel.lk/robots.txt",
+          "final_url": "https://www.mobitel.lk/robots.txt",
+          "status": 200,
+          "ms": 675.8,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Airtel",
+      "url": "https://www.airtel.lk/",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 901.64,
+      "samples": [
+        {
+          "url": "https://www.airtel.lk/",
+          "final_url": "https://www.airtel.lk/",
+          "status": 200,
+          "ms": 980.63,
+          "error": null
+        },
+        {
+          "url": "https://www.airtel.lk/",
+          "final_url": "https://www.airtel.lk/",
+          "status": 200,
+          "ms": 746.09,
+          "error": null
+        },
+        {
+          "url": "https://www.airtel.lk/",
+          "final_url": "https://www.airtel.lk/",
+          "status": 200,
+          "ms": 901.64,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Airtel",
+      "url": "https://www.airtel.lk/robots.txt",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 814.52,
+      "samples": [
+        {
+          "url": "https://www.airtel.lk/robots.txt",
+          "final_url": "https://www.airtel.lk/robots.txt",
+          "status": 200,
+          "ms": 806.2,
+          "error": null
+        },
+        {
+          "url": "https://www.airtel.lk/robots.txt",
+          "final_url": "https://www.airtel.lk/robots.txt",
+          "status": 200,
+          "ms": 834.34,
+          "error": null
+        },
+        {
+          "url": "https://www.airtel.lk/robots.txt",
+          "final_url": "https://www.airtel.lk/robots.txt",
+          "status": 200,
+          "ms": 814.52,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Hutch",
+      "url": "https://hutch.lk/",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 992.37,
+      "samples": [
+        {
+          "url": "https://hutch.lk/",
+          "final_url": "https://hutch.lk/",
+          "status": 200,
+          "ms": 1080.31,
+          "error": null
+        },
+        {
+          "url": "https://hutch.lk/",
+          "final_url": "https://hutch.lk/",
+          "status": 200,
+          "ms": 918.63,
+          "error": null
+        },
+        {
+          "url": "https://hutch.lk/",
+          "final_url": "https://hutch.lk/",
+          "status": 200,
+          "ms": 992.37,
+          "error": null
+        }
+      ]
+    },
+    {
+      "isp": "Hutch",
+      "url": "https://hutch.lk/robots.txt",
+      "success": 3,
+      "attempts": 3,
+      "median_ms": 874.65,
+      "samples": [
+        {
+          "url": "https://hutch.lk/robots.txt",
+          "final_url": "https://hutch.lk/robots.txt",
+          "status": 200,
+          "ms": 874.65,
+          "error": null
+        },
+        {
+          "url": "https://hutch.lk/robots.txt",
+          "final_url": "https://hutch.lk/robots.txt",
+          "status": 200,
+          "ms": 901.92,
+          "error": null
+        },
+        {
+          "url": "https://hutch.lk/robots.txt",
+          "final_url": "https://hutch.lk/robots.txt",
+          "status": 200,
+          "ms": 856.38,
+          "error": null
+        }
+      ]
+    }
+  ],
+  "recommended_for_retest": {
+    "Dialog": "https://www.dialog.lk/robots.txt",
+    "SLT": "https://www.slt.lk/robots.txt",
+    "Mobitel": "https://www.mobitel.lk/robots.txt",
+    "Airtel": "https://www.airtel.lk/robots.txt",
+    "Hutch": "https://hutch.lk/robots.txt"
+  }
+}

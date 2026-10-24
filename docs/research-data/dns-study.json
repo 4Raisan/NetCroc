@@ -1,0 +1,45 @@
+[
+  {
+    "name": "Current 192.168.1.1",
+    "servers": [
+      "192.168.1.1"
+    ],
+    "failures": 0,
+    "median": 14.29219999408815,
+    "count": 9,
+    "attempts": 9
+  },
+  {
+    "name": "Cloudflare",
+    "servers": [
+      "1.1.1.1",
+      "1.0.0.1"
+    ],
+    "failures": 0,
+    "median": 48.9400999940699,
+    "count": 9,
+    "attempts": 9
+  },
+  {
+    "name": "Google",
+    "servers": [
+      "8.8.8.8",
+      "8.8.4.4"
+    ],
+    "failures": 0,
+    "median": 90.7910000096308,
+    "count": 9,
+    "attempts": 9
+  },
+  {
+    "name": "Quad9",
+    "servers": [
+      "9.9.9.9",
+      "149.112.112.112"
+    ],
+    "failures": 2,
+    "median": 238.63140000321437,
+    "count": 7,
+    "attempts": 9
+  }
+]
