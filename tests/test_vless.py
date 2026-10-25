@@ -97,6 +97,21 @@ class VlessTests(unittest.TestCase):
         self.native_forwarding('tcp')
 
 
+    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    def test_native_websocket_tls_forwarding_and_wrong_uuid(self):
+        self.native_forwarding('ws')
+
+
+    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    def test_native_grpc_tls_forwarding_and_wrong_uuid(self):
+        self.native_forwarding('grpc')
+
+
+    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    def test_native_httpupgrade_tls_forwarding_and_wrong_uuid(self):
+        self.native_forwarding('httpupgrade')
+
+
     def native_forwarding(self,transport,security='tls',flow=''):
         fixture=Endpoint(tls=True);self.addCleanup(fixture.close)
         class Echo(socketserver.BaseRequestHandler):
