@@ -12,3 +12,5 @@ Runnable desktop packages for Windows x64, Linux x64 (glibc 2.35+), macOS Apple 
 **Beta limits:** macOS packages are unsigned and not notarized. Ubuntu-style NetworkManager desktops are the Linux networking target; other network managers need separate support. Optional WireGuard/TShark/system tools are not bundled. Linux/macOS real network mutation, provider credentials, sleep/resume and per-app capture require hardware validation; hosted tests do not establish full feature parity. Whole-PC POSIX SSH/VLESS needs a root session and has not been certified with normal-user keyring profiles. A ready listener does not prove provider authentication. NetCroc operates no VPN servers and does not provide ISP package bypass.
 
 Only runnable EXE/app/binary packages are uploaded. GitHub's automatic source links remain part of GitHub Releases.
+
+Intel macOS pins cryptography 48.0.1 to its universal2 wheel. CI refuses source-only cryptography installs to avoid mixing host OpenSSL libraries into the frozen app. Other platforms retain their compatible provider dependency resolution.
