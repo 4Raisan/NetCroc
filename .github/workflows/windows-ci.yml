@@ -1,0 +1,70 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Windows tests / Python ${{ matrix.python }}
+    runs-on: windows-2025
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.13', '3.14']
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+      - name: Install application dependencies
+        run: python -m pip install -r src/requirements.txt
+      - name: Check installed dependencies
+        run: python -m pip check
+      - name: Validate source, assets and documentation links
+        run: python tools/release.py --check
+      - name: Run Windows test suite
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  packaged-app:
+    name: Build and check Windows EXE
+    needs: tests
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: src/requirements.txt
+      - name: Install build dependencies
+        run: python -m pip install -r src/requirements.txt PyInstaller==6.22.3
+      - name: Build standalone application
+        run: python tools/release.py --build
+      - name: Verify packaged Python matches source
+        run: python tools/verify_bundle.py releases/NetCroc.exe
+      - name: Check packaged UI and read-only helper modes
+        run: python tools/smoke_frozen.py releases/NetCroc.exe

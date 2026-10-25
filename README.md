@@ -2,6 +2,8 @@
 
 Your quiet network companion.
 
+[![Windows CI](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml/badge.svg)](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml)
+
 A local Windows desktop app for connection checks, live traffic and usage history. The application now uses the NetCroc name. The source implementation is included. Standalone executables are built locally; no downloadable GitHub release has been published yet.
 
 ## Run
@@ -68,3 +70,9 @@ python tools/release.py --build
 Real administrator traffic capture, DNS mutation/rollback and Wi-Fi switching still require controlled live verification. Long-term history retention has been tested with simulated dates. No live Hutch speed increase is established by these checks.
 
 See [structure and compatibility notes](docs/STRUCTURE.md), [network research](docs/NETWORK-RESEARCH.md), [VPN research](docs/VPN-RESEARCH.md) and [validation history](docs/STUDY-AND-TESTS.md).
+
+## Continuous integration
+
+[Windows CI](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml) runs on pushes to `main`, pull requests and manual dispatch. It checks pinned dependencies, source syntax, assets, README links and the Windows test suite on Python 3.12, 3.13 and 3.14. After the tests pass, a separate Windows job builds the standalone EXE, verifies its bundled code and checks the packaged UI and read-only DNS helper modes.
+
+The workflow uses read-only repository permissions and actions pinned to commit hashes. It does not publish a release, apply DNS settings or switch Wi-Fi. CI mocks and temporary-runner checks do not replace controlled live administrator tests on users' PCs.
