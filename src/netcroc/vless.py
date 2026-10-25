@@ -65,7 +65,6 @@ def validate(value):
     result['label']=result['label'].strip()[:80] or 'VLESS profile'
     return result
 
-
 def parse_link(text):
     try:
         if len(text)>65536: raise ValueError()
@@ -83,7 +82,6 @@ def parse_link(text):
         return validate(result)
     except Exception:
         raise ValueError('Invalid or unsupported VLESS link. Import one TCP/WS/gRPC/HTTPUpgrade profile with TLS or REALITY; subscription URLs and insecure certificate overrides are not accepted.') from None
-
 
 class ProfileStore(ssh.ProfileStore):
     def save(self,value,identifier=None):
@@ -114,7 +112,6 @@ class ProfileStore(ssh.ProfileStore):
         except Exception: raise ValueError('Import a supported VLESS link file or NetCroc VLESS JSON profile.') from None
         return self.save(value)
 
-
 def outbound(value,server=None):
     p=validate(value)
     result={'type':'vless','tag':'vless','server':server or p['host'],'server_port':p['port'],'uuid':p['uuid']}
@@ -137,7 +134,6 @@ def outbound(value,server=None):
         result['transport']=transport
     return result
 
-
 def config(value,upstream=None):
     p=validate(value)
     if p['routing']=='tun':
@@ -153,7 +149,6 @@ def config(value,upstream=None):
         result={'log':{'level':'warn'},'inbounds':[{'type':'socks','tag':'local','listen':'127.0.0.1','listen_port':p['local_port']}],
             'outbounds':[outbound(p,upstream[0] if upstream else None)],'route':{'final':'vless'}}
     return result
-
 
 class Session(Routing):
     def __init__(self,folder):
@@ -194,3 +189,31 @@ class Session(Routing):
     def stop(self):
         self.cancel.set()
         super().stop();self.status='Disconnected'
+
+def proxy_ip(port):
+    """HTTPS IP check with DNS and TCP carried through the local SOCKS listener."""
+    import ssl
+    import ipaddress
+    sock=socket.create_connection(('127.0.0.1',int(port)),timeout=12)
+    try:
+        sock.sendall(b'\x05\x01\x00')
+        if ssh.receive_exact(sock,2)!=b'\x05\x00': raise OSError('SOCKS authentication refused.')
+        host=b'api.ipify.org'
+        sock.sendall(b'\x05\x01\x00\x03'+bytes([len(host)])+host+b'\x01\xbb')
+        reply=ssh.receive_exact(sock,4)
+        if reply[1]!=0: raise OSError('Provider could not reach IP check service.')
+        size={1:4,4:16}.get(reply[3])
+        if reply[3]==3: size=ssh.receive_exact(sock,1)[0]
+        if size is None: raise OSError('Invalid SOCKS reply.')
+        ssh.receive_exact(sock,size+2)
+        with ssl.create_default_context().wrap_socket(sock,server_hostname=host.decode()) as secure:
+            secure.sendall(b'GET / HTTP/1.0\r\nHost: api.ipify.org\r\nConnection: close\r\n\r\n')
+            data=b''
+            while len(data)<16384:
+                part=secure.recv(4096)
+                if not part: break
+                data+=part
+        header,body=data.split(b'\r\n\r\n',1)
+        if header.split(b'\r\n')[0].split()[1]!=b'200': raise OSError('IP check failed.')
+        return str(ipaddress.ip_address(body.decode().strip()))
+    finally: sock.close()
