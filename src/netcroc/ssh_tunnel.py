@@ -430,7 +430,7 @@ class SocksServer:
                 return
             client.sendall(b'\x05\x00')
             version, command, reserved, kind = receive_exact(client, 4)
-            if version != 5 or reserved or command != 1:
+            if version != 5 or reserved:
                 client.sendall(b'\x05\x07\x00\x01' + bytes(6))
                 return
             if kind == 1:
@@ -445,6 +445,11 @@ class SocksServer:
                 client.sendall(b'\x05\x08\x00\x01' + bytes(6))
                 return
             port = struct.unpack('!H', receive_exact(client, 2))[0]
+            if command != 1:
+                # Consume the whole request before closing. On Windows unread
+                # TCP data can turn close into RST and discard this refusal.
+                client.sendall(b'\x05\x07\x00\x01' + bytes(6))
+                return
             if not port:
                 raise ValueError('Invalid destination port.')
             channel = self.transport.open_channel('direct-tcpip', (host, port), ('127.0.0.1', 0), timeout=10)
