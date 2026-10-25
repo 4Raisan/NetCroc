@@ -40,10 +40,10 @@ jobs:
         run: python -m pip check
       - name: Validate source, assets and documentation links
         run: python tools/release.py --check
-      - name: Run Windows test suite
-        run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Validate optional SSH routing core without activating routes
         run: python tools/check_ssh_routing.py
+      - name: Run Windows test suite including native VLESS loopback
+        run: python -m unittest discover -s tests -p "test_*.py" -v
 
   packaged-app:
     name: Build and check Windows EXE

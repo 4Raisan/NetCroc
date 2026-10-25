@@ -10,4 +10,6 @@ if __name__ == '__main__':
     try: core.verify()
     except (ValueError,FileNotFoundError): core.install()
     core.check(1080,['192.0.2.1','2001:db8::1'])
+    from netcroc.vless import Session,config
+    Session(core.folder).check_config(config({'host':'127.0.0.1','uuid':'12345678-1234-4234-9234-123456789abc','security':'none'}))
     print('Verified download and native configuration check passed. No routes or DNS settings changed.')
