@@ -153,3 +153,44 @@ def config(value,upstream=None):
         result={'log':{'level':'warn'},'inbounds':[{'type':'socks','tag':'local','listen':'127.0.0.1','listen_port':p['local_port']}],
             'outbounds':[outbound(p,upstream[0] if upstream else None)],'route':{'final':'vless'}}
     return result
+
+
+class Session(Routing):
+    def __init__(self,folder):
+        super().__init__(folder);self.status='Disconnected';self.profile_id=None;self.cancel=threading.Event()
+    def check_config(self,value):
+        self.verify()
+        result=subprocess.run([str(self.exe),'check','-c','stdin'],input=json.dumps(value),text=True,capture_output=True,timeout=20,creationflags=HIDDEN)
+        if result.returncode: raise ValueError('The routing core rejected this VLESS configuration.')
+    def start_profile(self,value,identifier=None):
+        p=validate(value)
+        if p['routing']=='tun': self.preflight()
+        upstream=sorted(dict.fromkeys(item[4][0] for item in socket.getaddrinfo(p['host'],p['port'],type=socket.SOCK_STREAM)),key=lambda ip:ipaddress.ip_address(ip).version)
+        value=config(p,upstream);self.check_config(value)
+        self.profile_id=identifier
+        with self.lock:
+            try:
+                if self.cancel.is_set(): raise OSError('VLESS connection cancelled.')
+                self.process=subprocess.Popen([str(self.exe),'run','-c','stdin'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=HIDDEN)
+                self.job=ChildJob(self.process)
+                self.process.stdin.write(json.dumps(value).encode());self.process.stdin.close()
+                for _ in range(50):
+                    if self.cancel.is_set(): raise OSError('VLESS connection cancelled.')
+                    if self.process.poll() is not None: raise OSError('VLESS core failed to start.')
+                    if p['routing']=='socks':
+                        try:
+                            with socket.create_connection(('127.0.0.1',p['local_port']),timeout=.2) as probe:
+                                probe.sendall(b'\x05\x01\x00');ready=ssh.receive_exact(probe,2)==b'\x05\x00'
+                        except OSError: ready=False
+                    else:
+                        import psutil
+                        ready='NetCrocVLESS' in psutil.net_if_addrs()
+                    if ready:
+                        self.active=True;self.status='Ready · '+('local SOCKS5 127.0.0.1:'+str(p['local_port']) if p['routing']=='socks' else 'whole-PC VLESS')+' · provider connection not yet verified'
+                        return self.status
+                    time.sleep(.1)
+                raise OSError('VLESS listener/adapter did not become ready.')
+            except Exception: self.stop();raise
+    def stop(self):
+        self.cancel.set()
+        super().stop();self.status='Disconnected'

@@ -74,3 +74,10 @@ class VlessTests(unittest.TestCase):
         self.assertIn('203.0.113.1/32',config['inbounds'][0]['route_exclude_address'])
         self.assertEqual(config['dns']['servers'][0]['detour'],'vless')
         self.assertEqual([o['type'] for o in config['outbounds']],['vless'])
+
+
+    def test_cancelled_session_does_not_launch(self):
+        session=vless.Session(CORE);session.stop()
+        with patch.object(session,'check_config'),patch.object(vless.subprocess,'Popen') as process:
+            with self.assertRaises(OSError):session.start_profile(self.profile())
+            process.assert_not_called()
