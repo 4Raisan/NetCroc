@@ -32,6 +32,7 @@ def main():
         if system=='windows':
             asset=output/f'NetCroc-{label}-{arch}.exe';shutil.copy2(exe,asset)
         elif system=='darwin':
+            subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(work/'dist/NetCroc.app')],check=True)
             asset=output/f'NetCroc-{label}-{arch}.zip'
             subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(work/'dist/NetCroc.app'),str(asset)],check=True)
         else:
