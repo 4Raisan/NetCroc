@@ -117,6 +117,24 @@ class GuiTests(unittest.TestCase):
         with patch.object(wifi,'current',return_value='active'):
             with self.assertRaises(ValueError):wifi.forget({'profile':'active','interface':object()})
 
+    def test_vpn_profile_table_and_ipv4_baseline_display(self):
+        dashboard=self.app.dashboard
+        item={'id':'a'*32,'label':'Example','endpoint':'vpn.example.com:51820','route':'Default route','dns':'1.1.1.1','peers':1}
+        dashboard.events.put(('vpn',[(item,{'service':'not installed','handshake':'Not checked'})]))
+        dashboard.events.put(('vpn-ip',('192.0.2.1',True)))
+        dashboard.poll()
+        self.assertEqual(len(dashboard.vpn_table.get_children()),1)
+        self.assertEqual(dashboard.vpn_baseline,'192.0.2.1')
+        dashboard.events.put(('vpn-ip',('192.0.2.2',False)));dashboard.poll()
+        self.assertIn('changed from baseline',dashboard.vpn_ip.get())
+        self.assertIn('not a DNS-leak test',dashboard.vpn_ip.get())
+
+    def test_vpn_nonadmin_action_does_not_connect_or_ask_confirmation(self):
+        dashboard=self.app.dashboard
+        item={'id':'a'*32,'label':'Example'}
+        with patch.object(dashboard,'selected_vpn',return_value=item),patch.object(dashboard.vpn_store.backend,'require_admin',side_effect=PermissionError('admin needed')),patch('netcroc.dashboard.messagebox.showerror'),patch('netcroc.dashboard.messagebox.askyesno') as confirm,patch.object(dashboard.vpn_store,'connect') as connect:
+            dashboard.vpn_action('connect');confirm.assert_not_called();connect.assert_not_called()
+
     def test_live_monitor_reads_interfaces_without_admin(self):
         dashboard=self.app.dashboard
         # Hosted Windows runners may already be elevated; exercise the named

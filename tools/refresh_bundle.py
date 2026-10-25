@@ -39,6 +39,7 @@ def main():
     refreshed=[]
     for source in sorted((root/'src'/'netcroc').glob('*.py')):
         name='netcroc' if source.stem=='__init__' else 'netcroc.'+source.stem
+        if name not in code:raise SystemExit(f'New module {name}: perform a full rebuild.')
         current=compile(source.read_text(encoding='utf-8-sig'),str(source),'exec',dont_inherit=True,optimize=0)
         if imports(current)-{rename(i) for i in imports(code[name])}:raise SystemExit(f'New imports in {name}: perform a full rebuild.')
         if fingerprint(current)!=fingerprint(code[name]):refreshed.append(name)

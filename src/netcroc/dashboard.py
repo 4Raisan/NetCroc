@@ -9,12 +9,14 @@ import socket
 import threading
 import time
 import tkinter as tk
+import webbrowser
+import urllib.request
 from tkinter import ttk,messagebox,filedialog
 import psutil
 from .history import History,speed,volume,PERIODS,period_bounds
 from .traffic import Rates,Traffic,process_identity
 from .wifi import Wifi
-from . import dns,research
+from . import dns,research,vpn
 
 def table(parent,columns,widths=None):
     frame=ttk.Frame(parent); frame.pack(fill='both',expand=True,pady=8)
@@ -50,13 +52,18 @@ class Dashboard:
         self.tab_dns=self.tab(notebook,'DNS')
         self.tab_wifi=self.tab(notebook,'Saved Wi-Fi')
         self.tab_research=self.tab(notebook,'URL study')
-        self.build_live(); self.build_history(); self.build_dns(); self.build_wifi(); self.build_research()
+        self.tab_vpn=self.tab(notebook,'VPN')
+        self.vpn_store=vpn.ProfileStore(self.folder/'wireguard'/'profiles')
+        self.vpn_profiles=[]
+        self.vpn_baseline=None
+        self.build_live(); self.build_history(); self.build_dns(); self.build_wifi(); self.build_research(); self.build_vpn()
         self.root.after(250,self.poll)
         self.root.after(30000,self.refresh_active_history)
         if not diagnostic:
             self.monitor_thread=threading.Thread(target=self.monitor,daemon=True); self.monitor_thread.start()
             self.refresh_wifi()
             self.root.after(1500,self.refresh_dns)
+            self.root.after(2200,self.refresh_vpn)
 
     def tab(self,book,name):
         tab=ttk.Frame(book,padding=16); book.add(tab,text=name); return tab
@@ -168,7 +175,7 @@ class Dashboard:
 
     def task(self,kind,fn):
         if self.busy:
-            messagebox.showinfo('Working','Wait for the current DNS / Wi-Fi / research operation to finish.'); return
+            messagebox.showinfo('Working','Wait for the current network operation to finish.'); return
         self.busy=True
         def work():
             try: self.events.put((kind,fn()))
@@ -262,6 +269,71 @@ class Dashboard:
         if selected:
             self.app.custom.set(self.research_table.item(selected[0],'values')[1])
             messagebox.showinfo('URL selected','URL copied to Keep-alive. Pause an active run before saving new settings.')
+
+    def build_vpn(self):
+        tab=self.tab_vpn
+        ttk.Label(tab,text='WireGuard VPN',font=('Segoe UI',19,'bold')).pack(anchor='w')
+        ttk.Label(tab,text='Import your own .conf file. Importing does not connect. Connect / Disconnect requires Run as administrator.\nInstall the official WireGuard Windows client once; NetCroc does not provide VPN servers or accounts.',wraplength=950).pack(anchor='w',pady=6)
+        links=ttk.Frame(tab);links.pack(fill='x',pady=4)
+        ttk.Button(links,text='Get WireGuard ↗',command=lambda:webbrowser.open(vpn.INSTALL_URL)).pack(side='left')
+        for name,plan,url in vpn.PROVIDERS:
+            ttk.Button(links,text=name+' ↗',command=lambda url=url:webbrowser.open(url)).pack(side='left',padx=4)
+        ttk.Label(tab,text='Proton: free / paid · Mullvad and IVPN: paid · Windscribe: Pro / Build-A-Plan',wraplength=950).pack(anchor='w',pady=4)
+        self.vpn_status=tk.StringVar(value='Import a profile to begin. '+('WireGuard client found.' if self.vpn_store.backend.installed() else 'WireGuard client is not installed.'))
+        ttk.Label(tab,textvariable=self.vpn_status,wraplength=950).pack(anchor='w',pady=8)
+        self.vpn_table=table(tab,('Profile','Server','Routes','Service','Handshake'),[180,270,150,140,180])
+        line=ttk.Frame(tab);line.pack(fill='x')
+        for label,command in (('Import .conf',self.import_vpn),('Refresh status',self.refresh_vpn),('Connect',lambda:self.vpn_action('connect')),('Disconnect',lambda:self.vpn_action('disconnect')),('Remove saved profile',lambda:self.vpn_action('remove'))):
+            ttk.Button(line,text=label,command=command).pack(side='left',padx=(0,6))
+        self.vpn_ip=tk.StringVar(value='Public IP has not been checked. IP checks are optional and are not DNS-leak tests.')
+        ttk.Label(tab,textvariable=self.vpn_ip,wraplength=950).pack(anchor='w',pady=(12,4))
+        line=ttk.Frame(tab);line.pack(fill='x')
+        ttk.Button(line,text='Save current IP as baseline',command=lambda:self.check_vpn_ip(True)).pack(side='left')
+        ttk.Button(line,text='Check public IP',command=self.check_vpn_ip).pack(side='left',padx=8)
+        ttk.Label(tab,text='Connecting can change PC-wide routes and DNS and interrupt a remote connection. Closing NetCroc leaves an active tunnel running; use Disconnect to stop it.\nA running service alone does not prove a successful VPN connection. Check handshake and public IP. ISP data charges still apply.',wraplength=950).pack(anchor='w',pady=10)
+        # Saved metadata is read only when Refresh status is requested.
+
+    def import_vpn(self):
+        if self.busy:return
+        path=filedialog.askopenfilename(title='Import your WireGuard profile',filetypes=[('WireGuard configuration','*.conf')])
+        if path:self.task('vpn-import',lambda:self.vpn_store.import_file(path))
+
+    def refresh_vpn(self):
+        if self.stop.is_set():return
+        if self.busy:
+            self.root.after(500,self.refresh_vpn);return
+        def check():
+            profiles=self.vpn_store.profiles()
+            return [(item,self.vpn_store.backend.status(vpn.tunnel_name(item['id']))) for item in profiles]
+        if not self.busy:self.task('vpn',check)
+
+    def selected_vpn(self):
+        selection=self.vpn_table.selection()
+        if not selection:raise ValueError('Choose an imported VPN profile first.')
+        return next(item for item in self.vpn_profiles if item['id']==selection[0])
+
+    def vpn_action(self,action):
+        if self.busy:return
+        try:
+            item=self.selected_vpn()
+            if action in ('connect','disconnect'):self.vpn_store.backend.require_admin()
+        except (ValueError,PermissionError) as error:
+            messagebox.showerror('VPN',str(error));return
+        text={'connect':'Connect this VPN? It can change routes and DNS for the PC and interrupt remote access.','disconnect':'Disconnect this VPN and return traffic to your normal connection?','remove':'Remove this saved profile from NetCroc? Your original imported file will remain.'}[action]
+        if not messagebox.askyesno('VPN · '+item['label'],text):return
+        def perform():
+            getattr(self.vpn_store,action)(item['id'])
+            return action
+        self.task('vpn-action',perform)
+
+    def check_vpn_ip(self,baseline=False):
+        if self.busy:return
+        def check():
+            import ipaddress
+            with urllib.request.urlopen('https://api.ipify.org',timeout=8) as response:
+                address=str(ipaddress.ip_address(response.read(128).decode('ascii').strip()))
+            return address,baseline
+        self.task('vpn-ip',check)
 
     def monitor(self):
         rates=Rates(); app_totals=defaultdict(lambda:[0,0]); wifi=None
@@ -394,9 +466,31 @@ class Dashboard:
                 rows(self.research_table,[(r['isp'],r['url'],f"{r['success']}/{r['attempts']}",f"{r['median_ms']:.1f} ms" if r['median_ms'] is not None else 'Unavailable') for r in value])
                 if not self.diagnostic:dns.atomic(self.folder/'url-study.json',{'results':value,'recommended_for_retest':research.recommendations(value)})
                 self.research_status.set('Study complete. Use successful results as candidates; repeat on your own ISP.')
+            elif kind=='vpn':
+                self.vpn_profiles=[item for item,status in value]
+                selected=self.vpn_table.selection()
+                self.vpn_table.delete(*self.vpn_table.get_children())
+                for item,status in value:
+                    self.vpn_table.insert('', 'end',iid=item['id'],values=(item['label'],item['endpoint'],item['route'],status['service'],status['handshake']))
+                if selected and self.vpn_table.exists(selected[0]):self.vpn_table.selection_set(selected[0])
+                self.vpn_status.set(f'{len(value)} saved profiles. '+('WireGuard client found.' if self.vpn_store.backend.installed() else 'Install the official WireGuard client to connect.'))
+            elif kind=='vpn-import':
+                self.vpn_status.set('Profile encrypted and saved. No connection or DNS changes were made.')
+                self.refresh_vpn()
+            elif kind=='vpn-action':
+                self.vpn_status.set('VPN operation completed. Refreshing actual service status…')
+                self.refresh_vpn()
+            elif kind=='vpn-ip':
+                address,baseline=value
+                if baseline:
+                    self.vpn_baseline=address
+                    self.vpn_ip.set('Baseline public IPv4: '+address+' · held in memory only.')
+                else:
+                    comparison=(' · '+('changed from baseline' if address!=self.vpn_baseline else 'same as baseline')) if self.vpn_baseline else ' · no baseline saved'
+                    self.vpn_ip.set('Current public IPv4: '+address+comparison+' · this is not a DNS-leak test.')
             elif kind=='message':messagebox.showinfo('NetCroc',value)
             elif kind=='error':
-                self.dns_status.set(value); self.wifi_status.set(value); messagebox.showerror('NetCroc',value)
+                self.dns_status.set(value); self.wifi_status.set(value); self.vpn_status.set(value); messagebox.showerror('NetCroc',value)
         self.root.after(250,self.poll)
 
     def close(self):

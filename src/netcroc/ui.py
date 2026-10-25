@@ -85,7 +85,7 @@ class App:
         footer = ttk.Frame(outer)
         footer.pack(side='bottom', fill='x', pady=(12, 0))
         ttk.Button(footer, text='GitHub ↗', command=lambda: webbrowser.open('https://github.com/4Raisan/NetCroc')).pack(side='left')
-        ttk.Label(footer, text='Local monitoring · No VPN or ISP-package bypass', font=('Segoe UI', 9)).pack(side='right')
+        ttk.Label(footer, text='Local monitoring · Optional WireGuard VPN', font=('Segoe UI', 9)).pack(side='right')
         self.toggle_details()
         from .dashboard import Dashboard
         self.dashboard = Dashboard(self, notebook, diagnostic)
@@ -317,7 +317,7 @@ def main():
         app.toggle_details()
         root.update_idletasks()
         Path = __import__('pathlib').Path
-        Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps({'gui': 'passed', 'tabs': 6, 'isps': list(PRESETS), 'startup_changed': False, 'network_sent': False, 'capture_started': False, 'dns_changed': False, 'wifi_changed': False}), encoding='utf-8')
+        Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps({'gui': 'passed', 'tabs': 7, 'isps': list(PRESETS), 'startup_changed': False, 'network_sent': False, 'capture_started': False, 'dns_changed': False, 'wifi_changed': False}), encoding='utf-8')
         app.quit()
         return
     try:

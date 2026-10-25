@@ -16,7 +16,7 @@ def main():
     gui=output/'frozen-gui.json'
     result=subprocess.run([str(exe),'--diagnostics',str(gui)],timeout=150)
     assert result.returncode==0
-    info=json.loads(gui.read_text(encoding='utf-8'));assert info.get('tabs')==6
+    info=json.loads(gui.read_text(encoding='utf-8'));assert info.get('tabs')==7
     assert not any(info.get(key) for key in ('startup_changed','network_sent','capture_started','dns_changed','wifi_changed'))
     state=output/'frozen-watchdog.json';ready=state.with_suffix('.ready');token='read-only-packaged-watchdog-test'
     # Deliberately no original DNS configuration: even an unexpected timeout
