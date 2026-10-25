@@ -30,7 +30,7 @@ def main():
     dashboard.refresh_history()
     book=next(child for child in root.winfo_children() if isinstance(child,ttk.Notebook))
     try:
-        for index,name in ((1,'live'),(2,'history'),(3,'dns'),(0,'keepalive'),(6,'vpn'),(7,'ssh-tls')):
+        for index,name in ((1,'live'),(2,'history'),(3,'dns'),(0,'keepalive'),(6,'vpn'),(7,'ssh-tls'),(8,'vless')):
             book.select(index);root.deiconify();root.update();dashboard.draw_graph();root.update()
             time.sleep(.35)
             user=ctypes.windll.user32
