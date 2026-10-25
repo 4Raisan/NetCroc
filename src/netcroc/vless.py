@@ -83,3 +83,33 @@ def parse_link(text):
         return validate(result)
     except Exception:
         raise ValueError('Invalid or unsupported VLESS link. Import one TCP/WS/gRPC/HTTPUpgrade profile with TLS or REALITY; subscription URLs and insecure certificate overrides are not accepted.') from None
+
+
+class ProfileStore(ssh.ProfileStore):
+    def save(self,value,identifier=None):
+        value=validate(value);identifier=identifier or uuid.uuid4().hex
+        path=self.path(identifier);self.folder.mkdir(parents=True,exist_ok=True)
+        protected=base64.b64encode(crypt(json.dumps(value).encode(),description='NetCroc VLESS profile')).decode()
+        temporary=path.with_suffix('.tmp');temporary.write_text(json.dumps({'id':identifier,'protected':protected}),encoding='utf-8');temporary.replace(path)
+        return identifier
+    def load(self,identifier):
+        try:
+            value=json.loads(self.path(identifier).read_text(encoding='utf-8'))
+            return validate(json.loads(crypt(base64.b64decode(value['protected'],validate=True),decrypt=True)))
+        except Exception: raise ValueError('Could not unlock this VLESS profile for this Windows account.') from None
+    def profiles(self):
+        items=[]
+        for path in self.folder.glob('*.json'):
+            try:
+                p=self.load(path.stem)
+                items.append((path.stem,{k:p[k] for k in ('label','host','port','security','transport','routing')}))
+            except (OSError,ValueError): pass
+        return sorted(items,key=lambda item:item[1]['label'].lower())
+    def import_file(self,path):
+        with Path(path).open('rb') as source: raw=source.read(65537)
+        if len(raw)>65536: raise ValueError('VLESS profile file is too large.')
+        try:
+            text=raw.decode('utf-8-sig').strip()
+            value=parse_link(text) if text.startswith('vless://') else validate(json.loads(text))
+        except Exception: raise ValueError('Import a supported VLESS link file or NetCroc VLESS JSON profile.') from None
+        return self.save(value)

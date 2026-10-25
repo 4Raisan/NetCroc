@@ -40,3 +40,14 @@ class VlessTests(unittest.TestCase):
     def test_remote_plaintext_and_injection_rejected(self):
         for changes in ({'host':'example.com'},{'host':'bad\r\nhost'},{'uuid':'bad'},{'local_port':0},{'port':True},{'path':'bad','transport':'ws'}):
             with self.assertRaises(ValueError):self.profile(**changes)
+
+
+    def test_encrypted_vault_file_import_and_remove(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store=vless.ProfileStore(Path(folder)/'profiles');value=self.profile()
+            identifier=store.save(value)
+            self.assertNotIn(USER,store.path(identifier).read_text())
+            self.assertEqual(store.load(identifier),value)
+            file=Path(folder)/'profile.txt';file.write_text(f'vless://{USER}@127.0.0.1?security=none')
+            store.import_file(file);self.assertEqual(len(store.profiles()),2)
+            store.remove(identifier);self.assertEqual(len(store.profiles()),1)
