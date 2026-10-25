@@ -22,9 +22,11 @@ Quit the earlier Fastlane app from its tray before opening NetCroc. Both share a
 - Saved Wi-Fi profiles, password display when Windows permits, connect/forget controls and per-network history.
 - Tray controls, saved preferences and optional sign-in startup.
 - WireGuard profile import with encrypted storage, explicit connect/disconnect, service/handshake status and public IPv4 comparison.
+  A user-created free account can supply the profile: [tested free VPN setup](docs/FREE-VPN-SETUP.md).
 - SSH and SSH-over-TLS profiles with SNI, certificate/host-key verification, HTTP proxy and before/after-TLS payloads; local SOCKS5 or optional whole-PC TCP routing. See [SSH/TLS setup](docs/SSH-TLS.md).
+- Custom VLESS profiles for compatible 3x-ui/Xray servers, with TLS/REALITY, TCP/WebSocket/gRPC/HTTPUpgrade, encrypted storage, local SOCKS5 or whole-PC routing and a proxy public-IP check. See [VLESS setup](docs/VLESS.md).
 
-Keep-alive may help some idle stalls; it does not guarantee higher bandwidth or lower game ping. Comparison results describe response times and failures, not download speed. Per-app capture requires administrator access. WireGuard support requires the official Windows client and a user-supplied account/configuration. SSH whole-PC mode needs the optional routing core and administrator access; other UDP/ICMP is blocked. VLESS/Xray is not implemented. ISP billing bypass has not been established.
+Keep-alive may help some idle stalls; it does not guarantee higher bandwidth or lower game ping. Comparison results describe response times and failures, not download speed. Per-app capture requires administrator access. WireGuard support requires the official Windows client and a user-supplied account/configuration. SSH whole-PC mode needs the optional routing core and administrator access; other UDP/ICMP is blocked. VLESS uses sing-box, not a bundled Xray executable. ISP billing bypass has not been established.
 
 ## Settings and history
 
