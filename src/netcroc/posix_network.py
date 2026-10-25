@@ -98,12 +98,14 @@ class Wifi:
         if MAC:
             raw=run(['/usr/sbin/networksetup','-getairportnetwork',dev])
             return raw.split(': ',1)[1] if raw.startswith('Current Wi-Fi Network: ') else ''
-        value=run(['nmcli','-g','GENERAL.CON-UUID','device','show',dev])
+        field='GENERAL.CON-UUID' if strict else 'GENERAL.CONNECTION'
+        value=run(['nmcli','-g',field,'device','show',dev])
+        if not strict and not run(['nmcli','-g','GENERAL.STATE','device','show',dev]).startswith('100'):return ''
         return value if value!='--' else ''
     def profiles(self):
         result=[]
         for interface in self.interfaces():
-            current=self.current(interface)
+            current=self.current(interface,strict=not MAC)
             if MAC:
                 names=[line.strip() for line in run(['/usr/sbin/networksetup','-listpreferredwirelessnetworks',interface.guid]).splitlines()[1:] if line.strip()]
                 for name in names:result.append(dict(profile=name,ssid=name,interface=interface,connected=current==name,password='Use Reveal selected; Keychain approval may be required',auth='Saved Wi-Fi'))
@@ -209,7 +211,9 @@ class Traffic:
                     local={a.address.split('%')[0] for values in psutil.net_if_addrs().values() for a in values if a.family in (socket.AF_INET,socket.AF_INET6)};at=time.monotonic()
                 self.account(line,mapping,local)
         except (OSError,psutil.Error):self.errors+=1
-        finally:self.status='Per-app capture stopped or permission denied; captured history is incomplete'
+        finally:
+            self.status='Per-app capture stopped or permission denied; captured history is incomplete'
+            if self.process and self.process.poll() is None:self.process.terminate()
     def account(self,line,mapping,local):
         try:
             f=line.rstrip('\n').split('\t')
