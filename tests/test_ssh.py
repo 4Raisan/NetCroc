@@ -1,3 +1,4 @@
+import os
 """Real loopback SSH/TLS and SOCKS traffic; no system network changes."""
 import base64
 from datetime import datetime, timedelta, timezone
@@ -214,6 +215,7 @@ class SSHTests(unittest.TestCase):
         endpoint = self.endpoint(); session = self.session(endpoint.profile()); endpoint.transports[0].close()
         self.assertTrue(session.cancel.wait(4)); self.assertIn('disconnected',session.status.lower())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dpapi_vault_and_import(self):
         endpoint = self.endpoint()
         with tempfile.TemporaryDirectory() as folder:
@@ -233,6 +235,7 @@ class SSHTests(unittest.TestCase):
         with self.assertRaises(ValueError): ssh.validate(endpoint.profile(expires='2000-01-01'),credentials=True)
         self.assertEqual(ssh.render_payload('CONNECT {host}:{port}[crlf]X: {sni}',endpoint.profile()), f'CONNECT 127.0.0.1:{endpoint.port}\r\nX: 127.0.0.1\r\n\r\n'.encode())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_routing_config_and_nonadmin_block(self):
         config = routing.configuration(1080,['203.0.113.2','2001:db8::1'])
         self.assertIn('203.0.113.2/32',config['inbounds'][0]['route_exclude_address'])
@@ -254,6 +257,7 @@ class SSHTests(unittest.TestCase):
             with self.assertRaises(ValueError): routing.Routing(folder).install()
             self.assertFalse((Path(folder)/'sing-box.exe').exists())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_routing_download_preserves_license_and_detects_modified_executable(self):
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer,'w') as archive:

@@ -1,5 +1,7 @@
 """User-supplied VLESS profiles via the verified sing-box core, not an Xray executable."""
 import base64
+import os
+import sys
 import hashlib
 import ipaddress
 import json
@@ -139,7 +141,7 @@ def config(value,upstream=None):
     if p['routing']=='tun':
         if not upstream: raise ValueError('Resolve the upstream server before whole-PC routing.')
         result=configuration(p['local_port'],upstream)
-        result['inbounds'][0]['interface_name']='NetCrocVLESS'
+        result['inbounds'][0]['interface_name']='NetCrocVLESS' if os.name=='nt' else ('utun' if sys.platform=='darwin' else 'ncvless')
         result['outbounds']=[outbound(p,upstream[0])]
         result['dns']['servers'][0]['detour']='vless'
         # VLESS supports UDP through XUDP. ICMP remains rejected.
@@ -179,7 +181,7 @@ class Session(Routing):
                         except OSError: ready=False
                     else:
                         import psutil
-                        ready='NetCrocVLESS' in psutil.net_if_addrs()
+                        ready=any(name.startswith(('utun','ncvless')) for name in psutil.net_if_addrs()) if os.name!='nt' else 'NetCrocVLESS' in psutil.net_if_addrs()
                     if ready:
                         self.active=True;self.status='Ready · '+('local SOCKS5 127.0.0.1:'+str(p['local_port']) if p['routing']=='socks' else 'whole-PC VLESS')+' · provider connection not yet verified'
                         return self.status

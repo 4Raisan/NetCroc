@@ -1,3 +1,4 @@
+import os
 """Synthetic accounts; optional real sing-box loopback forwarding. No TUN routes."""
 import json
 import base64
@@ -52,6 +53,7 @@ class VlessTests(unittest.TestCase):
         for changes in ({'host':'example.com'},{'host':'bad\r\nhost'},{'uuid':'bad'},{'local_port':0},{'port':True},{'path':'bad','transport':'ws'}):
             with self.assertRaises(ValueError):self.profile(**changes)
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_encrypted_vault_file_import_and_remove(self):
         with tempfile.TemporaryDirectory() as folder:
             store=vless.ProfileStore(Path(folder)/'profiles');value=self.profile()
@@ -64,7 +66,7 @@ class VlessTests(unittest.TestCase):
 
     def test_whole_pc_config_excludes_upstream_and_has_no_direct_fallback(self):
         config=vless.config(self.profile(routing='tun'),['203.0.113.1'])
-        self.assertEqual(config['inbounds'][0]['interface_name'],'NetCrocVLESS')
+        self.assertIn(config['inbounds'][0]['interface_name'],('NetCrocVLESS','ncvless','utun'))
         self.assertIn('203.0.113.1/32',config['inbounds'][0]['route_exclude_address'])
         self.assertEqual(config['dns']['servers'][0]['detour'],'vless')
         self.assertEqual([o['type'] for o in config['outbounds']],['vless'])
@@ -75,7 +77,7 @@ class VlessTests(unittest.TestCase):
             with self.assertRaises(OSError):session.start_profile(self.profile())
             process.assert_not_called()
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_schema_all_supported_transports_and_reality(self):
         session=vless.Session(CORE)
         for transport in ('tcp','ws','grpc','httpupgrade'):
@@ -83,27 +85,27 @@ class VlessTests(unittest.TestCase):
         session.check_config(vless.config(self.profile(security='reality',sni='example.com',reality_key='A'*43,flow='xtls-rprx-vision')))
         session.check_config(vless.config(self.profile(routing='tun'),['127.0.0.1']))
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_vless_tls_forwarding_and_wrong_uuid(self):
         self.native_forwarding('tcp')
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_websocket_tls_forwarding_and_wrong_uuid(self):
         self.native_forwarding('ws')
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_grpc_tls_forwarding_and_wrong_uuid(self):
         self.native_forwarding('grpc')
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_httpupgrade_tls_forwarding_and_wrong_uuid(self):
         self.native_forwarding('httpupgrade')
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_reality_handshake_and_invalid_credentials(self):
         self.native_forwarding('tcp',security='reality')
 
-    @unittest.skipUnless((CORE/'sing-box.exe').exists(),'Run tools/check_ssh_routing.py first for native core tests')
+    @unittest.skipUnless((CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')).exists(),'Run tools/check_ssh_routing.py first for native core tests')
     def test_native_reality_vision_handshake(self):
         self.native_forwarding('tcp',security='reality',flow='xtls-rprx-vision')
 
@@ -146,7 +148,7 @@ class VlessTests(unittest.TestCase):
             if transport=='grpc':options['service_name']='netcroc-lab'
             else:options['path']='/netcroc-lab'
             server['inbounds'][0]['transport']=options
-        process=subprocess.Popen([str(CORE/'sing-box.exe'),'run','-c','stdin'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=HIDDEN)
+        process=subprocess.Popen([str(CORE/('sing-box.exe' if os.name=='nt' else 'sing-box')),'run','-c','stdin'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=HIDDEN)
         job=ChildJob(process);self.addCleanup(process.wait,5);self.addCleanup(job.close)
         process.stdin.write(json.dumps(server).encode());process.stdin.close()
         time.sleep(.3)

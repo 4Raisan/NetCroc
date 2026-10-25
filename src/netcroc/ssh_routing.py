@@ -12,7 +12,10 @@ import threading
 import time
 import urllib.request
 import zipfile
+import os
+import tarfile
 
+POSIX_HASHES={'linux-amd64': '699a1b510aa4396b2176d32d1181920399ebf1e267835da6f3b598d0f7c24968', 'darwin-arm64': '0d8c7f5ed5d587b0f1a5e9772a708ec3bfa4ac4c9329604b01d8d9c2ba406838', 'darwin-amd64': 'eae86b9b033bba50b7c44ab719e4bfac0aca05efd28483390ed3aa510f32db25'}
 VERSION = '1.14.4'
 URL = f'https://github.com/SagerNet/sing-box/releases/download/v{VERSION}/sing-box-{VERSION}-windows-amd64.zip'
 SHA256 = '99185d75d314a07dbba4a130c8ad986cbeb629a07927975636b341ca61f991df'
@@ -32,7 +35,7 @@ def configuration(port, upstream):
             'server': '1.1.1.1', 'server_port': 443, 'path': '/dns-query',
             'tls': {'enabled': True, 'server_name': 'cloudflare-dns.com'}, 'detour': 'ssh'}],
             'final': 'remote-dns'},
-        'inbounds': [{'type': 'tun', 'tag': 'netcroc-tun', 'interface_name': 'NetCrocSSH',
+        'inbounds': [{'type': 'tun', 'tag': 'netcroc-tun', 'interface_name': 'NetCrocSSH' if os.name=='nt' else ('utun' if platform.system()=='Darwin' else 'ncssh'),
             'address': ['172.30.91.1/30', 'fdfe:dcba:9876::1/126'],
             'auto_route': True, 'strict_route': True, 'stack': 'mixed',
             'route_exclude_address': excluded}],
@@ -47,6 +50,10 @@ def configuration(port, upstream):
 class ChildJob:
     """Windows kills the routing child when the parent/job handle disappears."""
     def __init__(self, process):
+        self.native=None
+        if os.name!='nt':
+            from .platforms import ChildGuard
+            self.native=ChildGuard(process);return
         class Basic(ctypes.Structure):
             _fields_ = [('process_time', ctypes.c_int64), ('job_time', ctypes.c_int64),
                 ('flags', wintypes.DWORD), ('min_working', ctypes.c_size_t),
@@ -72,36 +79,54 @@ class ChildJob:
             raise OSError('Could not protect the routing process lifetime.')
 
     def close(self):
-        if self.handle:
+        if self.native is not None:
+            self.native.close();self.native=None;return
+        if getattr(self,'handle',None):
             self.api.CloseHandle(self.handle); self.handle = None
 
 
 class Routing:
     def __init__(self, folder):
         self.folder = Path(folder)
-        self.exe = self.folder / 'sing-box.exe'
+        self.exe = self.folder / ('sing-box.exe' if os.name=='nt' else 'sing-box')
         self.process = self.job = None
         self.active = False
         self.lock = threading.RLock()
 
     def install(self):
-        if platform.machine().lower() not in ('amd64', 'x86_64'):
-            raise ValueError('The optional routing download supports Windows x64 only.')
-        with urllib.request.urlopen(URL, timeout=45) as response:
-            raw = response.read(100 * 1024 * 1024 + 1)
-        if len(raw) > 100 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != SHA256:
-            raise ValueError('Routing download failed SHA-256 verification.')
-        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
-            selected = {Path(n).name: n for n in archive.namelist() if Path(n).name in ('sing-box.exe', 'LICENSE', 'wintun.dll')}
-            if 'sing-box.exe' not in selected or 'LICENSE' not in selected:
-                raise ValueError('Routing archive is incomplete.')
-            self.folder.mkdir(parents=True, exist_ok=True)
-            for name, member in selected.items():
-                target = self.folder / name
-                temporary = target.with_suffix('.download')
-                temporary.write_bytes(archive.read(member)); temporary.replace(target)
-        digest = hashlib.sha256(self.exe.read_bytes()).hexdigest()
-        (self.folder / 'verified.sha256').write_text(digest, encoding='ascii')
+        machine=platform.machine().lower()
+        if os.name=='nt':
+            if machine not in ('amd64','x86_64'):raise ValueError('Windows routing core requires x64.')
+            url,expected=URL,SHA256
+        else:
+            arch='arm64' if machine in ('arm64','aarch64') else 'amd64' if machine in ('x86_64','amd64') else ''
+            target=('darwin' if platform.system()=='Darwin' else 'linux')+'-'+arch
+            hashes=POSIX_HASHES
+            if target not in hashes:raise ValueError('No pinned routing core for this operating system/architecture.')
+            url=f'https://github.com/SagerNet/sing-box/releases/download/v{VERSION}/sing-box-{VERSION}-{target}.tar.gz'
+            expected=hashes[target]
+        with urllib.request.urlopen(url,timeout=45) as response:raw=response.read(100*1024*1024+1)
+        if len(raw)>100*1024*1024 or hashlib.sha256(raw).hexdigest()!=expected:raise ValueError('Routing download failed SHA-256 verification.')
+        wanted={self.exe.name,'LICENSE'}|({'wintun.dll'} if os.name=='nt' else set())
+        selected={}
+        if os.name=='nt':
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                for member in archive.namelist():
+                    name=Path(member).name
+                    if name in wanted:selected[name]=archive.read(member)
+        else:
+            with tarfile.open(fileobj=io.BytesIO(raw),mode='r:gz') as archive:
+                for member in archive.getmembers():
+                    name=Path(member.name).name
+                    if name in wanted and member.isfile() and member.size<=100*1024*1024:selected[name]=archive.extractfile(member).read()
+        if self.exe.name not in selected or 'LICENSE' not in selected:raise ValueError('Routing archive is incomplete.')
+        self.folder.mkdir(parents=True,exist_ok=True)
+        for name,data in selected.items():
+            target=self.folder/name;temporary=target.with_suffix('.download')
+            temporary.write_bytes(data)
+            if os.name!='nt':temporary.chmod(0o755 if name==self.exe.name else 0o644)
+            temporary.replace(target)
+        (self.folder/'verified.sha256').write_text(hashlib.sha256(self.exe.read_bytes()).hexdigest(),encoding='ascii')
 
     def verify(self):
         try:
@@ -122,14 +147,17 @@ class Routing:
         return True
 
     def preflight(self):
-        if not ctypes.windll.shell32.IsUserAnAdmin():
+        from .platforms import admin
+        if not admin():
             raise PermissionError('Whole-PC TCP mode needs Run as administrator. Local SOCKS5 does not.')
         import psutil
-        for service in psutil.win_service_iter():
+        for service in (psutil.win_service_iter() if os.name=='nt' else []):
             if service.name().startswith('WireGuardTunnel$') and service.status()!='stopped':
                 raise ValueError('Disconnect the active WireGuard tunnel before whole-PC routing.')
         if any('wireguard' in a.lower() or a in ('NetCrocSSH','NetCrocVLESS') for a in psutil.net_if_addrs()):
             raise ValueError('Disconnect other VPN/TUN adapters before Whole-PC TCP mode.')
+        if os.name!='nt' and any(n.startswith(('utun','wg','nc')) for n in psutil.net_if_addrs()):
+            raise ValueError('Disconnect other VPN/TUN adapters first.')
         self.check()
 
     def start(self, port, upstream):
@@ -148,7 +176,7 @@ class Routing:
                 for _ in range(50):
                     if self.process.poll() is not None:
                         raise OSError('Routing core could not start.')
-                    if 'NetCrocSSH' in psutil.net_if_addrs():
+                    if os.name!='nt' or 'NetCrocSSH' in psutil.net_if_addrs():
                         self.active = True
                         return
                     time.sleep(.1)
