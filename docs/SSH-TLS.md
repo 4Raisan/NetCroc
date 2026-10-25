@@ -32,3 +32,9 @@ A configured SNI is a TLS server-name value. It does not establish authorization
 - [Official routing release](https://github.com/SagerNet/sing-box/releases/tag/v1.14.4): pinned engine and license.
 
 The native `sing-box check` test creates no adapter. Full administrator routing, real provider authentication, public IP/leak checks, and ISP accounting remain integration tests requiring an authorized account and safe test network.
+
+## macOS / Linux whole-PC routing
+
+Run the GUI as your normal desktop user. A connect action requests native OS authorization and starts an independent privileged worker; the GUI retains access to its own OS keyring. The worker receives validated settings over a private control request and stdin, never command-line credentials. It monitors the GUI's PID, creation time and owner, and tears down routing when the GUI exits or crashes. Disconnect uses the existing private transaction and does not prompt again. Private recovery state is retained if cleanup cannot be confirmed.
+
+Linux real TUN forwarding and crash cleanup pass inside an isolated network namespace with synthetic accounts and no external network. Physical macOS routing, provider authentication, DNS/IPv6 leak behaviour and sleep/resume recovery still need live tests. macOS can have pre-existing system utun interfaces; their mere presence is not treated as proof of an active conflicting VPN.

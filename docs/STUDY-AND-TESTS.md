@@ -1,3 +1,13 @@
+# Recovery follow-up — 27 October 2026
+
+The original 24-hour process/history observer finished but failed its coverage requirement (18.69 sampled hours, three observer gaps, zero history-read errors). Read-only inspection of Windows power events and minute coverage showed overlapping power transitions and history gaps. This is evidence of suspension/scheduling periods, not proof that every gap has one cause. The original failure report is preserved.
+
+The revised observer distinguishes wall time, Windows awake uptime and observed samples; records timestamps/durations for gaps; refuses to overwrite prior evidence; supports an awake-time target with a bounded maximum wall duration; and can hold a nonpersistent thread-scoped awake request. An 18-second real Windows smoke passed with continuing history and no stalled samples. This does not complete a new 24-hour run.
+
+Windows automated coverage expanded to 155 cases, with five POSIX-only skips. POSIX routing now separates the normal GUI/keyring from the privileged routing worker, with native OS authorization and parent-identity/transaction checks. The real Linux lab passed SSH and VLESS TUN byte forwarding, clean disconnects and parent-crash cleanup inside an isolated network namespace. No physical routes, DNS, Wi-Fi, ISP package or overseas provider was used by that lab. The lab is also enabled on the Ubuntu CI runner. Actual Linux/macOS physical-network tests and macOS notarization remain separate.
+
+---
+
 ## REALITY, free provider and extended testing — 26 October 2026
 
 The user authorized further administrator/provider tests, while excluding logo work and GitHub publishing, and deferred ISP-package billing checks because no package is currently available. **131 tests passed in 112.027 seconds.**

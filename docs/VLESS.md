@@ -13,3 +13,9 @@ Whole-PC mode requires administrator access, resolves the provider server before
 The local lab validates real TLS-protected forwarding over TCP, WebSocket, gRPC and HTTPUpgrade with synthetic accounts and local servers, including invalid-UUID rejection. REALITY and REALITY+Vision also pass real local handshakes, with rejection of invalid UUIDs, public keys and short IDs. The lab's REALITY server must set its intended server name; schema acceptance alone did not reveal that fixture requirement. These tests do not establish compatibility with every commercial provider. No public/free VPS, provider account, foreign exit, or ISP billing bypass is bundled.
 
 Primary protocol references: [VLESS outbound](https://sing-box.sagernet.org/configuration/outbound/vless/), [TLS/REALITY](https://sing-box.sagernet.org/configuration/shared/tls/), [V2Ray transports](https://sing-box.sagernet.org/configuration/shared/v2ray-transport/).
+
+## macOS / Linux whole-PC routing
+
+Run the GUI as your normal desktop user. A connect action requests native OS authorization and starts an independent privileged worker; the GUI retains access to its own OS keyring. The worker receives validated settings over a private control request and stdin, never command-line credentials. It monitors the GUI's PID, creation time and owner, and tears down routing when the GUI exits or crashes. Disconnect uses the existing private transaction and does not prompt again. Private recovery state is retained if cleanup cannot be confirmed.
+
+Linux real TUN forwarding and crash cleanup pass inside an isolated network namespace with synthetic accounts and no external network. Physical macOS routing, provider authentication, DNS/IPv6 leak behaviour and sleep/resume recovery still need live tests. macOS can have pre-existing system utun interfaces; their mere presence is not treated as proof of an active conflicting VPN.

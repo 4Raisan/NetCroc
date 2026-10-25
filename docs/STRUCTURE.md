@@ -31,6 +31,7 @@ NetCroc keeps the application, tests, development tools and documentation separa
 | `netcroc/wifi.py` | Native saved-profile access, current connection and network management. |
 | `netcroc/research.py` | Bounded HTTP/ICMP comparisons and study helpers. |
 | `netcroc/platforms.py` | Native paths, startup, OS keyring encryption, instance lock, authorization and child-crash guard. |
+| `netcroc/tun_service.py` | Privileged POSIX routing worker, private control transactions and parent-crash cleanup. |
 | `netcroc/posix_network.py` | macOS/Linux Wi-Fi, DNS, WireGuard and optional metadata capture. |
 | `netcroc/vpn.py` | WireGuard parsing, DPAPI storage and Windows tunnel services. |
 | `netcroc/ssh_tunnel.py` | SSH/TLS transport, profile storage and local SOCKS server. |
@@ -50,9 +51,9 @@ The UI calls the backends; the monitoring loop writes history. GUI diagnostics d
 | Optional verified core download/config check | `check_ssh_routing.py` |
 | Local transport stress tests | `soak_connections.py` |
 | Read-only process/history observation | `longrun_observer.py` |
-| Explicit live network tests | `live_admin_checks.py`, `live_dns_rollback_check.py`, `live_dns_timeout_check.py`, `live_tunnel_check.py`, `live_wireguard_check.py`, `live_wifi_switch_check.py`, `live_provider_check.py` |
+| Explicit live network tests | `live_admin_checks.py`, `live_dns_rollback_check.py`, `live_dns_timeout_check.py`, `live_tunnel_check.py`, `live_wireguard_check.py`, `live_wifi_switch_check.py`, `live_provider_check.py`, `live_posix_routing_check.py` |
 
-The `live_*` scripts are opt-in lab tools, not startup code or CI steps. Depending on the script they need elevation, change DNS/routes, create temporary services or switch Wi-Fi. Review their arguments and recovery behaviour before running them at the PC. Standard tests use synthetic credentials; provider checks require a private local profile or an existing encrypted profile ID.
+The `live_*` scripts are opt-in lab tools, not startup code. Only the explicitly isolated Linux routing lab runs in CI; it refuses the host network namespace. Depending on the script they need elevation, change DNS/routes, create temporary services or switch Wi-Fi. Review their arguments and recovery behaviour before running them at the PC. Standard tests use synthetic credentials; provider checks require a private local profile or an existing encrypted profile ID.
 
 ## Assets and design drafts
 

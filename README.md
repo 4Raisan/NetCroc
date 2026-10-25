@@ -33,11 +33,11 @@ Keep-alive is optional and does not guarantee faster downloads or lower game pin
 | Platform | Package | Requirements |
 |---|---|---|
 | Windows x64 | `NetCroc-windows-x64.exe` | Windows 10/11; Python bundled. |
-| macOS Apple Silicon | `NetCroc-macos-arm64.zip` | Extract and open `NetCroc.app`; unsigned/unnotarized beta. |
-| macOS Intel | `NetCroc-macos-x64.zip` | Extract and open `NetCroc.app`; unsigned/unnotarized beta. |
+| macOS Apple Silicon | `NetCroc-macos-arm64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized beta. |
+| macOS Intel | `NetCroc-macos-x64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized beta. |
 | Linux x64 | `NetCroc-linux-x64.tar.gz` | Extract and run `./NetCroc`; desktop Linux with glibc 2.35+ (Ubuntu 22.04+). |
 
-macOS may require an explicit Open approval in Privacy & Security for this unsigned beta. Signing/notarization is not supplied by these builds. Linux needs a graphical desktop; the bundled binary does not include optional system networking tools.
+macOS may require an explicit Open approval in Privacy & Security for this unnotarized beta. The builds include an ad-hoc integrity signature, not a trusted Developer ID signature or notarization. Linux needs a graphical desktop; the bundled binary does not include optional system networking tools.
 
 **From source:** install Python 3.12–3.14 with Tcl/Tk, then run from the project root:
 
@@ -63,7 +63,7 @@ Quit any earlier Fastlane/NetCroc instance from its tray first. Windows retains 
 
 Ordinary connection checks, adapter traffic, history, profile import and DNS benchmarking run without elevation. Windows per-app capture, DNS changes, WireGuard service controls and whole-PC routing require administrator access.
 
-On macOS/Linux, DNS and WireGuard operations request native OS authorization (`osascript` / `pkexec`). No administrator passwords are entered into NetCroc. The elevated DNS watchdog starts before settings change. Whole-PC SSH/VLESS routing currently needs a root-launched session; local SOCKS5 does not. A normal user's encrypted profiles remain tied to their keyring, so use local SOCKS5 or WireGuard's operation-level authorization rather than assuming a root account can unlock them.
+On macOS/Linux, DNS and WireGuard operations request native OS authorization (`osascript` / `pkexec`). No administrator passwords are entered into NetCroc. The elevated DNS watchdog starts before settings change. Whole-PC SSH/VLESS uses an independently supervised privileged worker, so the GUI and profile keyring stay under the normal user. Disconnect requests do not need a second authorization prompt. The worker checks desktop-process identity and stops the routing engine if the desktop process exits or crashes. Local SOCKS5 needs no elevation.
 
 ### Platform features and optional tools
 
@@ -76,12 +76,12 @@ On macOS/Linux, DNS and WireGuard operations request native OS authorization (`o
 | WireGuard | Official Windows client | `wg-quick`, `wg`, `wireguard-go` | `wg-quick`, `wg`; DNS may need `resolvconf` |
 | SSH/TLS local SOCKS5 | Included | Included | Included |
 | VLESS local SOCKS5 | Verified optional sing-box | Verified native sing-box | Verified native sing-box |
-| Whole-PC SSH/VLESS | Administrator | Root session; additional live validation pending | Root session; additional live validation pending |
+| Whole-PC SSH/VLESS | Administrator | OS authorization; live TUN validation pending | OS authorization; real isolated TUN/crash lab passed |
 | Sign-in startup | Registry entry | LaunchAgent | XDG autostart entry |
 
 TShark attribution captures metadata on one default interface, excludes local destinations and omits unresolved/ambiguous sockets. Short-lived connections, shared UDP sockets and capture loss can make per-app totals incomplete; adapter totals remain independent. Wi-Fi passwords on macOS/Linux are revealed only after an explicit click, never during startup.
 
-Run network-changing tests while you can recover locally. Importing a profile never connects it. No macOS/Linux live DNS/Wi-Fi/VPN mutation is certified by hosted CI.
+Run network-changing tests while you can recover locally. Importing a profile never connects it. No physical macOS/Linux DNS/Wi-Fi/provider VPN behaviour is certified by hosted CI. Linux additionally runs a real TUN lab in a fresh network namespace with no external network.
 
 ## Usage periods
 
@@ -162,11 +162,15 @@ Verified runnable packages are written to `test-artifacts/packages/`. Each build
 
 [Desktop CI](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml) tests Windows Python 3.12/3.13/3.14, Ubuntu x64, macOS Apple Silicon and macOS Intel. Platform-specific API tests run on their native OS; portable backends have separate mocked-command and child-crash tests. Linux GUI checks use Xvfb.
 
-A separate native build matrix creates four runnable packages. Publishing is an explicit manual dispatch and runs only after all tests and package verification pass. Only the publish job has repository write permission. No live DNS/Wi-Fi changes or provider credentials run in CI, and no source archives are uploaded as release assets (GitHub supplies its own automatic source links).
+A separate native build matrix creates four runnable packages. Publishing is an explicit manual dispatch and runs only after all tests and package verification pass. Only the publish job has repository write permission. No physical DNS/Wi-Fi changes or provider credentials run in CI, and no source archives are uploaded as release assets (GitHub supplies its own automatic source links).
 
 ### Verification status
 
 The 26 October 2026 validation recorded **131 passing local tests** and successful GitHub CI for the published implementation. Controlled live tests covered administrator traffic capture, DNS apply/restore, failure rollback and the real 90-second crash watchdog. A Proton Free WireGuard profile changed the observed exit from Sri Lanka to the Netherlands; native IPv6/UDP checks and a separate browser DNS test also succeeded. These are bounded observations, not universal provider or leak certification.
+
+On 27 October, the expanded Windows suite passed 155 test cases (five POSIX-only cases skipped). A real isolated Linux lab passed SSH and VLESS whole-PC data forwarding, disconnect cleanup and cleanup after a controlling-process crash. These are synthetic local accounts in a network namespace, not overseas provider tests or physical network certification.
+
+The original 24-hour observation remains failed: about 18.7 hours were sampled with three observer gaps and no database-read errors. Windows power events overlap the gap periods, but the old observer did not log enough timing detail to attribute every gap conclusively. The revised observer logs wall/awake time separately, preserves gap records, supports a 24-awake-hour target and an optional thread-scoped keep-awake request. Its short real Windows smoke test passed; that does not replace the long observation.
 
 Still incomplete: reliable switching between two internet-connected Wi-Fi networks, Windows 10 compatibility, sleep/resume recovery, longer stability testing, ISP charging checks and leak testing on a native IPv6 access network. The 24-hour observation completed on 27 October but failed its coverage threshold: about 18.7 hours were sampled, with three sampling gaps and no database-read errors. Sleep/suspension gaps remain unknown time, not zero usage.
 
