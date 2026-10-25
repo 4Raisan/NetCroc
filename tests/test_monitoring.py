@@ -130,7 +130,8 @@ class CaptureTests(unittest.TestCase):
                 ipv6=event_id in (26,27,58,59);family=socket.AF_INET6 if ipv6 else socket.AF_INET
                 local='fd00::2' if ipv6 else '192.168.1.2';remote='2606:4700:4700::1111' if ipv6 else '1.1.1.1'
                 up=event_direction(event_id)=='up'
-                destination=remote if up else local;source=local if up else remote
+                tcp=event_id in (10,11,26,27)
+                destination=remote if tcp or up else local;source=local if tcp or up else remote
                 payload=ctypes.create_string_buffer(struct.pack('<II',123,1500)+socket.inet_pton(family,destination)+socket.inet_pton(family,source)+b'\0'*32)
                 record.data=ctypes.addressof(payload);record.length=len(payload)
                 capture._event(ctypes.pointer(record))
@@ -138,6 +139,8 @@ class CaptureTests(unittest.TestCase):
                 self.assertEqual(capture.drain(),{(123,local):[0,1500] if up else [1500,0]})
 
 class WifiTests(unittest.TestCase):
+
+
     def test_plaintext_open_and_protected_keys(self):
         xml='<WLANProfile xmlns="urn:test"><name>test</name><SSIDConfig><SSID><name>ssid</name></SSID></SSIDConfig><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication></authEncryption><sharedKey><protected>false</protected><keyMaterial>example-password</keyMaterial></sharedKey></security></MSM></WLANProfile>'
         value=parse_profile(xml)

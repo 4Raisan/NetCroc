@@ -112,8 +112,13 @@ class Traffic:
             source=self._property(ptr,'saddr',16 if ipv6 else 4)
             destination=self._property(ptr,'daddr',16 if ipv6 else 4)
             family=socket.AF_INET6 if ipv6 else socket.AF_INET
-            local=socket.inet_ntop(family,source if direction=='up' else destination)
-            remote=socket.inet_ntop(family,destination if direction=='up' else source)
+            # Kernel TCP events identify the connection endpoints (saddr=local,
+            # daddr=remote) even on RECV. UDP uses packet source/destination.
+            # Confirmed with live known-payload transfer on Windows, not only
+            # synthetic records: reversing TCP RECV silently discarded downloads.
+            tcp=ptr.contents.header.id in {10,11,26,27}
+            local=socket.inet_ntop(family,source if tcp or direction=='up' else destination)
+            remote=socket.inet_ntop(family,destination if tcp or direction=='up' else source)
             if not ipaddress.ip_address(remote).is_global:
                 return
             with self.lock:
