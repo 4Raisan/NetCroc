@@ -1,25 +1,78 @@
-# Structure and compatibility
+# Project structure
 
-The current project lives in `NetCroc`, alongside the original `Hutch_Self-Ping` recovery copy. Its existing Git repository and history are preserved. The old source folder and running executable were not modified.
+NetCroc keeps the application, tests, development tools and documentation separate. The current layout is intentionally shallow; there is no need for another nested framework or a file per small helper.
 
-## Layout decisions
+## Top-level folders
 
-- `src/netcroc` is the renamed Python package; `src/app.py` remains the entry point.
-- Tests moved out of the application source into `tests`.
-- Release, bundle verification and preview scripts moved into `tools`.
-- Icons and diagrams moved into `assets`.
-- Research and validation notes moved into `docs`, with bounded study snapshots in `docs/research-data`.
-- Build outputs and test artifacts stay local and ignored by Git.
-- Historical Fastlane documentation is archived explicitly in `LEGACY-FASTLANE.md`; current instructions live in the root README.
+| Folder | Purpose |
+|---|---|
+| `src/` | Runnable Python application and pinned dependencies. |
+| `tests/` | Automated unit, GUI and native loopback tests. |
+| `tools/` | Build helpers, verification utilities and explicit live-test runners. |
+| `docs/` | User setup guides, research and dated test history. |
+| `assets/` | Current icon/diagram plus local design explorations. |
+| `.github/workflows/` | Native Windows/macOS/Linux tests and package CI. |
+| `releases/` | Generated local EXE and launcher; ignored by Git. |
+| `test-artifacts/` | Generated local evidence, routing-core downloads and build inputs; ignored by Git. |
 
-## Deliberate legacy identifiers
+`.git/`, `.venv/` and `__pycache__/` are repository/runtime internals rather than application features. Virtual environments and Python caches are ignored by Git.
 
-`ConnectionTrayPreview` remains only for existing local data, old sign-in entry cleanup, and shared instance locks. Keeping these identifiers prevents losing history, losing pending DNS recovery state, or starting two usage writers during the transition. Fresh installations use the NetCroc data folder. Startup entry changes happen only when the user saves the startup preference.
+## Read the source in this order
 
-The bundle refresh utility recognizes the old Python package name when importing a compatible earlier build. It writes the current `netcroc` package and validates all module fingerprints.
+| File under `src/` | Responsibility |
+|---|---|
+| `app.py` | Entry point, startup error reporting and independent DNS helper modes. |
+| `netcroc/ui.py` | Main window, tray, preferences and application lifetime. |
+| `netcroc/dashboard.py` | Traffic, history, DNS, Wi-Fi, research and VPN tabs; shared monitoring loop. |
+| `netcroc/core.py` | Connection-check settings, presets and shared local-data helpers. |
+| `netcroc/traffic.py` | Adapter rates and Windows ETW per-app byte capture. |
+| `netcroc/history.py` | SQLite recording, rolling/calendar periods, retention and exports. |
+| `netcroc/dns.py` | Resolver benchmarking, Windows settings and rollback watchdog. |
+| `netcroc/wifi.py` | Native saved-profile access, current connection and network management. |
+| `netcroc/research.py` | Bounded HTTP/ICMP comparisons and study helpers. |
+| `netcroc/platforms.py` | Native paths, startup, OS keyring encryption, instance lock, authorization and child-crash guard. |
+| `netcroc/posix_network.py` | macOS/Linux Wi-Fi, DNS, WireGuard and optional metadata capture. |
+| `netcroc/vpn.py` | WireGuard parsing, DPAPI storage and Windows tunnel services. |
+| `netcroc/ssh_tunnel.py` | SSH/TLS transport, profile storage and local SOCKS server. |
+| `netcroc/ssh_routing.py` | Verified optional core, whole-PC routing and child-process cleanup. |
+| `netcroc/ssh_ui.py` | SSH profile editor and session controls. |
+| `netcroc/vless.py` | VLESS parsing/storage, native configuration, sessions and proxy IP checks. |
+| `netcroc/vless_ui.py` | VLESS account editor and explicit connection controls. |
 
-Source, tests, assets, tooling and documentation are tracked in Git. Executables and local test artifacts are excluded; publishing a downloadable release is a separate step.
+The UI calls the backends; the monitoring loop writes history. GUI diagnostics do not initiate live capture or change network settings. Dependencies stay in `src/requirements.txt` so source setup, build and CI share the same versions.
 
-## VPN module
+## Tools: ordinary checks versus live tests
 
-`src/netcroc/vpn.py` validates standard WireGuard client profiles, stores them with user-scoped DPAPI, controls only NetCroc-named tunnel services, and reports service/handshake status. `tests/test_vpn.py` uses synthetic keys and mocked service operations. The official WireGuard Windows program is a separate prerequisite, not bundled in NetCroc.
+| Group | Files in `tools/` |
+|---|---|
+| Build | `package_release.py`, `release.py`, `refresh_bundle.py` |
+| Read-only/source/package checks | `verify_bundle.py`, `smoke_frozen.py`, `preview_gui.py` |
+| Optional verified core download/config check | `check_ssh_routing.py` |
+| Local transport stress tests | `soak_connections.py` |
+| Read-only process/history observation | `longrun_observer.py` |
+| Explicit live network tests | `live_admin_checks.py`, `live_dns_rollback_check.py`, `live_dns_timeout_check.py`, `live_tunnel_check.py`, `live_wireguard_check.py`, `live_wifi_switch_check.py`, `live_provider_check.py` |
+
+The `live_*` scripts are opt-in lab tools, not startup code or CI steps. Depending on the script they need elevation, change DNS/routes, create temporary services or switch Wi-Fi. Review their arguments and recovery behaviour before running them at the PC. Standard tests use synthetic credentials; provider checks require a private local profile or an existing encrypted profile ID.
+
+## Assets and design drafts
+
+`assets/netcroc.ico` is the build icon. `netcroc.png` and `architecture.svg` are existing artwork. The logo concept directories and `netcroc-cloud-logo-v*` files are design drafts; none has been selected as a replacement icon. Keep the current gallery paths stable while reviewing concepts. They are separate from runtime data and private VPN profiles.
+
+The tracked project can be checked with `git ls-files`; local logo experiments may appear as untracked files. `tools/release.py --check` checks local assets too, so its file count can differ from a clean checkout.
+
+## Documentation
+
+- [Main README](../README.md): features, setup, usage periods and development commands.
+- [Free VPN setup](FREE-VPN-SETUP.md), [SSH/TLS](SSH-TLS.md) and [VLESS](VLESS.md): account and connection guides.
+- [Network research](NETWORK-RESEARCH.md) and [VPN research](VPN-RESEARCH.md): rationale and provider limitations.
+- [Study and tests](STUDY-AND-TESTS.md): dated validation snapshots; later sections can supersede older pending items.
+- `research-data/`: bounded study results.
+- [Legacy Fastlane notes](LEGACY-FASTLANE.md): historical documentation, not current setup instructions.
+
+## Deliberate compatibility identifiers
+
+`ConnectionTrayPreview` remains for existing local data, legacy startup cleanup and shared instance locks. Keeping it prevents lost history, abandoned DNS recovery state and two usage writers during migration. Fresh installations use the NetCroc data folder. Startup entries change only when the user saves the startup preference.
+
+The optional bundle-refresh utility recognizes the older package name when examining compatible earlier builds, then writes the current `netcroc` package and verifies module fingerprints.
+
+Executables, test evidence and private VPN configuration files are excluded from Git. Publishing a downloadable GitHub Release remains separate from pushing source and running CI.

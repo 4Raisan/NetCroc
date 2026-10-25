@@ -59,7 +59,7 @@ See [STUDY-AND-TESTS.md](STUDY-AND-TESTS.md) for measured results and validation
 
 The remaining instructions describe the preserved older `Connection-Tray.exe`, rather than the new Fastlane dashboard.
 
-![Preview icon](src/assets/preview.png)
+![Preview icon](../assets/netcroc.png)
 
 Quiet Windows connection checks for **Dialog, Mobitel, Hutch and Airtel**. Name and icon are provisional until the preview is checked.
 
@@ -96,7 +96,7 @@ python -m unittest discover -s src/tests
 
 For the unsigned EXE, install `PyInstaller==6.22.3` and run `python src/release.py --build`.
 
-![Architecture](src/assets/architecture.svg)
+![Architecture](../assets/architecture.svg)
 
 `src/app.py` launches; `src/` separates window/tray from checks/settings; `src/assets/` holds preview artwork/diagram; `src/tests/` verifies behavior; `src/release.py` builds/checks. Commit these with README, requirements and .gitignore. Local `releases/` is ignored; attach runnable release files to a GitHub Release later.
 
