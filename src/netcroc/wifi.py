@@ -16,7 +16,13 @@ class Profile(c.Structure):
     _fields_ = [('name', w.WCHAR*256), ('flags', w.DWORD)]
 
 class Connection(c.Structure):
-    _fields_ = [('mode', w.DWORD), ('state', w.DWORD), ('profile', w.WCHAR*256)]
+    _fields_ = [('state', w.DWORD), ('mode', w.DWORD), ('profile', w.WCHAR*256)]
+
+def connection_profile(attributes,strict=False):
+    # WLAN_CONNECTION_ATTRIBUTES starts with isState, then connection mode.
+    # An associating/authenticating profile is not a completed connection.
+    # Still protect it from Forget while the transition is in flight.
+    return attributes.profile if attributes.state==1 or strict and attributes.state!=4 else ''
 
 class ConnectParams(c.Structure):
     _fields_ = [('mode',w.DWORD),('profile',w.LPCWSTR),('ssid',c.c_void_p),
@@ -75,7 +81,7 @@ class Wifi:
                 raise OSError(code,'Cannot verify the connected Wi-Fi. Profile removal was blocked.')
             return ''
         try:
-            return c.cast(ptr,c.POINTER(Connection)).contents.profile
+            return connection_profile(c.cast(ptr,c.POINTER(Connection)).contents,strict)
         finally:
             self.api.WlanFreeMemory(ptr)
 

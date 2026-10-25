@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.history import History,speed,volume
 from netcroc.traffic import Rates,Traffic,Record,Header,EventTrace,LogHeader,Logfile,event_direction
-from netcroc.wifi import parse_profile,GUID
+from netcroc.wifi import parse_profile,GUID,Connection,connection_profile
 from netcroc import dns,research
 from netcroc.core import validate,DEFAULTS
 
@@ -139,7 +139,20 @@ class CaptureTests(unittest.TestCase):
                 self.assertEqual(capture.drain(),{(123,local):[0,1500] if up else [1500,0]})
 
 class WifiTests(unittest.TestCase):
+    def test_native_connection_prefix_state_precedes_mode(self):
+        name='Lab profile'.encode('utf-16-le')
+        value=Connection.from_buffer_copy(struct.pack('<II',1,0)+name+bytes(512-len(name)))
+        self.assertEqual(value.state,1);self.assertEqual(value.mode,0)
+        self.assertEqual(connection_profile(value),'Lab profile')
 
+    def test_transitional_profile_is_not_connected_but_cannot_be_forgotten(self):
+        value=Connection();value.profile='Lab profile'
+        for state in (3,5,6,7):
+            value.state=state
+            self.assertEqual(connection_profile(value),'')
+            self.assertEqual(connection_profile(value,strict=True),'Lab profile')
+        value.state=4
+        self.assertEqual(connection_profile(value,strict=True),'')
 
     def test_plaintext_open_and_protected_keys(self):
         xml='<WLANProfile xmlns="urn:test"><name>test</name><SSIDConfig><SSID><name>ssid</name></SSID></SSIDConfig><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication></authEncryption><sharedKey><protected>false</protected><keyMaterial>example-password</keyMaterial></sharedKey></security></MSM></WLANProfile>'
