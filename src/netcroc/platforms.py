@@ -118,9 +118,11 @@ def elevated_native(action,payload):
     try:
         with os.fdopen(fd,'w') as file:json.dump(dict(action=action,payload=payload),file)
         command=args+['--native-control',path]
-        if MAC:
+        if admin():
+            result=run(command,timeout=150)
+        elif MAC:
             shell=shlex.join(command)
-            script='do shell script '+json.dumps(shell)+' with administrator privileges'
+            script='do shell script '+json.dumps(shell,ensure_ascii=False)+' with administrator privileges'
             result=run(['/usr/bin/osascript','-e',script],timeout=150)
         else:result=run(['pkexec',*command],timeout=150)
         response=json.loads(Path(path).read_text())
@@ -138,7 +140,10 @@ def native_control(path):
         if not stat.S_ISREG(info.st_mode) or info.st_mode&0o077 or info.st_size>131072:raise PermissionError('Invalid private control request.')
         request=json.load(file)
     action=request['action'];payload=request['payload']
-    if action=='wg-connect':result=native.WireGuard().connect(payload['name'],payload['text'])
+    if action=='routing-start':
+        from .tun_service import launch
+        result=launch(payload,info.st_uid)
+    elif action=='wg-connect':result=native.WireGuard().connect(payload['name'],payload['text'])
     elif action=='wg-disconnect':result=native.WireGuard().disconnect(payload['name'])
     elif action=='dns-set':native.DnsBackend().set(payload['original'],payload['servers']);result=True
     elif action=='dns-guard':

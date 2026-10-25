@@ -18,8 +18,8 @@ def report_error(error):
     else:
         reason = 'The app could not start or complete an action (' + type(error).__name__ + ').'
         fix = 'Try the current release from a writable local folder. If it persists, send the diagnostic log to the maintainer.'
-    base = Path(os.environ.get('LOCALAPPDATA', str(Path.home())))
-    folder = base / 'ConnectionTrayPreview' if (base / 'ConnectionTrayPreview').exists() else base / 'NetCroc'
+    from netcroc.core import data_folder
+    folder = data_folder()
     log = folder / 'startup-error.log'
     try:
         log.parent.mkdir(parents=True, exist_ok=True)
@@ -64,6 +64,10 @@ def health_status():
 
 if __name__ == '__main__':
     try:
+        if '--routing-watch' in sys.argv:
+            from netcroc.tun_service import worker
+            worker()
+            raise SystemExit(0)
         if '--native-control' in sys.argv:
             from netcroc.platforms import native_control
             native_control(sys.argv[sys.argv.index('--native-control')+1])
