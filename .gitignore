@@ -19,3 +19,7 @@ venv/
 *.log
 Thumbs.db
 Desktop.ini
+
+# VPN configuration files contain credentials.
+*.conf
+*.conf.dpapi
