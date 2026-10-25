@@ -13,6 +13,7 @@ import webbrowser
 import urllib.request
 from tkinter import ttk,messagebox,filedialog
 import psutil
+from .platforms import admin
 from .history import History,speed,volume,PERIODS,period_bounds
 from .traffic import Rates,Traffic,process_identity
 from .wifi import Wifi
@@ -203,7 +204,7 @@ class Dashboard:
 
     def apply_dns(self):
         try:
-            if not ctypes.windll.shell32.IsUserAnAdmin():raise PermissionError('Close NetCroc and use Run as administrator when you are at the PC. No settings were changed.')
+            if os.name=='nt' and not admin():raise PermissionError('Close NetCroc and use Run as administrator when you are at the PC. No settings were changed.')
             item=self.dns_table.selection()
             if not item:raise ValueError('Test DNS, then select a resolver.')
             name=self.dns_table.item(item[0],'values')[0]
@@ -217,7 +218,7 @@ class Dashboard:
         except (ValueError,PermissionError) as error:messagebox.showerror('DNS',str(error))
 
     def restore_dns(self):
-        if not ctypes.windll.shell32.IsUserAnAdmin():
+        if os.name=='nt' and not admin():
             messagebox.showinfo('Administrator required','Run NetCroc as administrator to restore DNS.');return
         if messagebox.askyesno('Restore DNS','Restore the saved original adapter DNS settings?'):
             def work():self.dns.restore();return 'Original DNS settings restored.'

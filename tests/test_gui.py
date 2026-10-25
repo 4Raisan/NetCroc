@@ -1,3 +1,6 @@
+import os
+import base64
+from contextlib import nullcontext
 """Local GUI integration. No DNS changes, Wi-Fi switches, or external probes."""
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -42,7 +45,8 @@ class GuiTests(unittest.TestCase):
         import tempfile
         from netcroc.ssh_tunnel import ProfileStore
         tab=self.app.dashboard.ssh_tab
-        with tempfile.TemporaryDirectory() as folder:
+        keyring_patch=patch('keyring.get_password',return_value=base64.b64encode(bytes(range(32))).decode()) if os.name!='nt' else nullcontext()
+        with keyring_patch,tempfile.TemporaryDirectory() as folder:
             tab.store=ProfileStore(Path(folder))
             identifier=tab.store.save({'host':'example.com','password':'synthetic-only'})
             tab.refresh(); self.assertEqual(len(tab.tree.get_children()),1)
@@ -142,6 +146,7 @@ class GuiTests(unittest.TestCase):
             'elapsed':1,'wifi':{},'up':{'Wi-Fi'}})
         self.assertGreater(self.app.activity[0],32768)
 
+    @unittest.skipUnless(os.name=='nt','POSIX requests native authorization inside the backend')
     def test_dns_apply_without_admin_never_calls_backend(self):
         dashboard=self.app.dashboard
         with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=0),patch('netcroc.dashboard.messagebox.showerror'),patch.object(dashboard.dns,'apply') as apply:
@@ -175,7 +180,7 @@ class GuiTests(unittest.TestCase):
         dashboard=self.app.dashboard
         # Hosted Windows runners may already be elevated; exercise the named
         # non-admin adapter sampler instead of accidentally starting ETW capture.
-        with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=0):
+        with patch('netcroc.dashboard.Traffic.start',side_effect=PermissionError('adapter-only test')):
             dashboard.monitor_thread=threading.Thread(target=dashboard.monitor,daemon=True)
             dashboard.monitor_thread.start()
             found=False;deadline=time.monotonic()+12
