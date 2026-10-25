@@ -1,6 +1,7 @@
 """Local GUI integration. No DNS changes, Wi-Fi switches, or external probes."""
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
+import gc
 import queue
 import sys
 import threading
@@ -13,12 +14,17 @@ from netcroc.ui import App
 
 class GuiTests(unittest.TestCase):
     def setUp(self):
+        # Tk cycles must be finalized on their owning thread, before workers allocate.
+        gc.collect()
         self.root=tk.Tk();self.root.withdraw();self.app=App(self.root,diagnostic=True)
 
     def tearDown(self):
         if self.app.worker and self.app.worker.is_alive():
             self.app.stop_event.set();self.app.worker.join(timeout=5)
         self.app.quit()
+        self.app=None
+        self.root=None
+        gc.collect()
 
     def test_startup_with_connection_checks_already_enabled(self):
         from netcroc.core import DEFAULTS
@@ -113,13 +119,20 @@ class GuiTests(unittest.TestCase):
 
     def test_live_monitor_reads_interfaces_without_admin(self):
         dashboard=self.app.dashboard
-        dashboard.monitor_thread=threading.Thread(target=dashboard.monitor,daemon=True)
-        dashboard.monitor_thread.start()
-        found=False;deadline=time.monotonic()+12
-        while time.monotonic()<deadline:
-            kind,value=dashboard.events.get(timeout=12)
-            if kind=='live' and value['elapsed']>0:
-                self.assertTrue(value['interfaces']);found=True;break
-        self.assertTrue(found,'Live adapter sampler did not produce data')
+        # Hosted Windows runners may already be elevated; exercise the named
+        # non-admin adapter sampler instead of accidentally starting ETW capture.
+        with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=0):
+            dashboard.monitor_thread=threading.Thread(target=dashboard.monitor,daemon=True)
+            dashboard.monitor_thread.start()
+            found=False;deadline=time.monotonic()+12
+            try:
+                while time.monotonic()<deadline:
+                    kind,value=dashboard.events.get(timeout=12)
+                    if kind=='live' and value['elapsed']>0:
+                        self.assertTrue(value['interfaces']);found=True;break
+            finally:
+                dashboard.stop.set();dashboard.monitor_thread.join(timeout=5)
+            self.assertFalse(dashboard.monitor_thread.is_alive())
+            self.assertTrue(found,'Live adapter sampler did not produce data')
 
 if __name__=='__main__':unittest.main()
