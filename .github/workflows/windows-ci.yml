@@ -1,72 +1,123 @@
-name: Windows CI
+name: Desktop CI
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish verified runnable packages as a prerelease
+        type: boolean
+        default: false
+      tag:
+        description: Release tag (vX.Y.Z-beta.N)
+        type: string
+        default: v0.4.0-beta.1
 
 permissions:
   contents: read
 
 concurrency:
-  group: windows-ci-${{ github.workflow }}-${{ github.ref }}
+  group: desktop-ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   tests:
-    name: Windows tests / Python ${{ matrix.python }}
-    runs-on: windows-2025
-    timeout-minutes: 15
+    name: Tests / ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.12', '3.13', '3.14']
+        include:
+          - {os: windows-2025, python: '3.12'}
+          - {os: windows-2025, python: '3.13'}
+          - {os: windows-2025, python: '3.14'}
+          - {os: ubuntu-22.04, python: '3.12'}
+          - {os: macos-15, python: '3.12'}
+          - {os: macos-15-intel, python: '3.12'}
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: ${{ matrix.python }}
-          architecture: x64
           cache: pip
           cache-dependency-path: src/requirements.txt
-      - name: Install application dependencies
+      - name: Linux desktop test dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb python3-tk libgtk-3-0
+      - name: Install pinned dependencies
         run: python -m pip install -r src/requirements.txt
-      - name: Check installed dependencies
-        run: python -m pip check
-      - name: Validate source, assets and documentation links
-        run: python tools/release.py --check
-      - name: Validate optional SSH routing core without activating routes
+      - run: python -m pip check
+      - run: python tools/release.py --check
+      - name: Download and validate native routing core (no routes changed)
         run: python tools/check_ssh_routing.py
-      - name: Run Windows test suite including native VLESS loopback
+      - name: Windows and macOS tests
+        if: runner.os != 'Linux'
         run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Linux tests with a virtual display
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python -m unittest discover -s tests -p "test_*.py" -v
 
-  packaged-app:
-    name: Build and check Windows EXE
+  packages:
+    name: Package / ${{ matrix.os }}
     needs: tests
-    runs-on: windows-2025
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-22.04, macos-15, macos-15-intel]
     steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
-          python-version: '3.14'
-          architecture: x64
-          cache: pip
-          cache-dependency-path: src/requirements.txt
-      - name: Install build dependencies
-        run: python -m pip install -r src/requirements.txt PyInstaller==6.22.3
-      - name: Build standalone application
-        run: python tools/release.py --build
-      - name: Verify packaged Python matches source
-        run: python tools/verify_bundle.py releases/NetCroc.exe
-      - name: Check packaged UI and read-only helper modes
-        run: python tools/smoke_frozen.py releases/NetCroc.exe
+          python-version: '3.12'
+      - name: Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb python3-tk libgtk-3-0
+      - run: python -m pip install -r src/requirements.txt PyInstaller==6.22.3
+      - name: Build, verify and package Windows/macOS
+        if: runner.os != 'Linux'
+        run: python tools/package_release.py
+      - name: Build, verify and package Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python tools/package_release.py
+      - name: Save verified runnable package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: runnable-${{ matrix.os }}
+          path: test-artifacts/packages/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish verified runnable packages
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: packages
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: runnable-*
+          merge-multiple: true
+          path: runnable-packages
+      - name: Publish packages only after all native checks pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]] || exit 2
+          test "$(find runnable-packages -type f | wc -l)" -eq 4
+          gh release create "$RELEASE_TAG" runnable-packages/* --target "$GITHUB_SHA" --prerelease --title "NetCroc $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md

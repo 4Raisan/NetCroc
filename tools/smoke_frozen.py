@@ -24,7 +24,7 @@ def main():
     write(state,{'state':'pending','transaction':token})
     ready.unlink(missing_ok=True)
     child=subprocess.Popen([str(exe),'--dns-watch',str(state),token],
-        env={**os.environ,'PYINSTALLER_RESET_ENVIRONMENT':'1'},creationflags=subprocess.CREATE_NO_WINDOW)
+        env={**os.environ,'PYINSTALLER_RESET_ENVIRONMENT':'1'},creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     became_ready=False
     try:
         deadline=time.monotonic()+90

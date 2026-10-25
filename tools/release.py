@@ -88,7 +88,7 @@ def check():
                 raise ValueError('Broken README link: ' + target)
     for file in (ROOT / 'releases').glob('*'):
         allowed = ('.exe', '.bat')
-        if file.is_file() and file.suffix.lower() not in allowed:
+        if file.is_file() and file.suffix.lower() not in allowed and file.name!='NetCroc':
             raise ValueError('Unexpected release file: ' + file.name)
     print('Source syntax, assets, README links and runnable release layout passed.')
 
