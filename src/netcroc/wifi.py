@@ -121,3 +121,7 @@ class Wifi:
         if self.handle:
             self.api.WlanCloseHandle(self.handle,None)
             self.handle=None
+
+import os
+if os.name != "nt":
+    from .posix_network import Wifi

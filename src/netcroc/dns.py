@@ -12,7 +12,7 @@ import struct
 import subprocess
 import sys
 import time
-import winreg
+if os.name=='nt':import winreg
 
 DOMAINS=('example.com','www.microsoft.com','www.cloudflare.com')
 PUBLIC={'Cloudflare':('1.1.1.1','1.0.0.1'),'Google':('8.8.8.8','8.8.4.4'),'Quad9':('9.9.9.9','149.112.112.112')}
@@ -155,19 +155,25 @@ class DnsManager:
             args.append(str(Path(__file__).resolve().parents[1]/'app.py'))
         transaction=self.load()['transaction']
         # A frozen watchdog must own its extracted runtime so it survives parent exit.
-        child=subprocess.Popen(args+['--dns-watch',str(self.path),transaction],creationflags=FLAGS,close_fds=True,
-            env={**os.environ,'PYINSTALLER_RESET_ENVIRONMENT':'1'})
+        from .platforms import admin,elevated_native
+        child=None
+        if os.name!='nt' and not admin():
+            elevated_native('dns-guard',dict(path=str(self.path.resolve()),transaction=transaction))
+        else:
+            child=subprocess.Popen(args+['--dns-watch',str(self.path),transaction],creationflags=FLAGS,close_fds=True,
+                env={**os.environ,'PYINSTALLER_RESET_ENVIRONMENT':'1'})
         ready=self.path.with_suffix('.ready');deadline=time.monotonic()+90
         while time.monotonic()<deadline:
             try:
                 if json.loads(ready.read_text(encoding='utf-8')).get('transaction')==transaction:return
             except (OSError,ValueError):pass
-            if child.poll() is not None:raise OSError('DNS rollback protection could not start. No DNS change was made.')
+            if child is not None and child.poll() is not None:raise OSError('DNS rollback protection could not start. No DNS change was made.')
             time.sleep(.1)
         raise TimeoutError('DNS rollback protection did not become ready. No DNS change was made.')
 
     def apply(self,adapter,servers):
-        if not ctypes.windll.shell32.IsUserAnAdmin():
+        from .platforms import admin
+        if os.name=='nt' and not admin():
             raise PermissionError('Run NetCroc as administrator to apply DNS. Benchmarks need no administrator access.')
         if self.load() and self.load()['state']=='pending':
             raise ValueError('Restore the pending DNS transaction first.')
@@ -215,3 +221,6 @@ def watchdog(path,transaction=None):
         state=manager.load()
         if not state or state['state']!='pending' or state.get('transaction')!=transaction: return
     manager.restore()
+
+if os.name != "nt":
+    from .posix_network import adapters, DnsBackend as WindowsBackend

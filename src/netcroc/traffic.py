@@ -45,8 +45,8 @@ class LogHeader(c.Structure):
               ('timezone',c.c_ubyte*172),('boot',c.c_longlong),('frequency',c.c_longlong),
               ('start',c.c_longlong),('reserved',w.ULONG),('lost',w.ULONG)]
 
-CALLBACK=c.WINFUNCTYPE(None,c.POINTER(Record))
-BUFFER_CALLBACK=c.WINFUNCTYPE(w.ULONG,P)
+CALLBACK=getattr(c,'WINFUNCTYPE',c.CFUNCTYPE)(None,c.POINTER(Record))
+BUFFER_CALLBACK=getattr(c,'WINFUNCTYPE',c.CFUNCTYPE)(w.ULONG,P)
 
 class Logfile(c.Structure):
     _fields_=[('file',w.LPWSTR),('logger',w.LPWSTR),('current',c.c_longlong),
@@ -206,3 +206,6 @@ def process_identity(pid):
         return proc.exe() or proc.name()
     except (psutil.Error,OSError):
         return 'System' if pid in (0,4) else f'Unresolved process (PID {pid})'
+
+if os.name != "nt":
+    from .posix_network import Traffic

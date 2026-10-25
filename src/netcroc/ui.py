@@ -1,4 +1,5 @@
 import ctypes
+import os
 import json
 import queue
 import sys
@@ -269,7 +270,7 @@ class App:
             elif action == 'quit':
                 self.quit()
                 return
-        if getattr(self, 'show_event', None) and ctypes.windll.kernel32.WaitForSingleObject(self.show_event, 0) == 0:
+        if os.name=='nt' and getattr(self, 'show_event', None) and ctypes.windll.kernel32.WaitForSingleObject(self.show_event, 0) == 0:
             self.show()
         self.root.after(150, self.poll)
 
@@ -285,6 +286,7 @@ class App:
 
 def main():
     diagnostic = '--diagnostics' in sys.argv
+    if os.name!='nt':return posix_main(diagnostic)
     kernel = ctypes.windll.kernel32
     kernel.CreateMutexW.restype = ctypes.c_void_p
     kernel.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_wchar_p]
@@ -334,3 +336,25 @@ def main():
     finally:
         if event: kernel.CloseHandle(event)
         if mutex: kernel.CloseHandle(mutex)
+
+
+def posix_main(diagnostic):
+    from .platforms import InstanceLock
+    lock=None if diagnostic else InstanceLock()
+    root=tk.Tk()
+    try:
+        if diagnostic:root.withdraw()
+        app=App(root,diagnostic)
+        if diagnostic:
+            root.update_idletasks()
+            from pathlib import Path
+            Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps(dict(gui='passed',tabs=len(app.dashboard.notebook.tabs()),startup_changed=False,network_sent=False,capture_started=False,dns_changed=False,wifi_changed=False)),encoding='utf-8')
+            app.quit();return
+        try:app.create_tray()
+        except Exception:app.tray=None
+        if '--tray' in sys.argv:
+            app.start(automatic=True)
+            if app.tray:app.hide()
+        root.mainloop()
+    finally:
+        if lock:lock.close()

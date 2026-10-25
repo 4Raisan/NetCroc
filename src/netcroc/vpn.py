@@ -108,6 +108,9 @@ class Blob(c.Structure):
 
 def crypt(data,description='NetCroc WireGuard profile',decrypt=False,machine=False):
     """Windows DPAPI; machine scope is used only for the ACL-protected service file."""
+    if os.name!='nt':
+        from .platforms import crypt as native_crypt
+        return native_crypt(data,decrypt=decrypt)
     buf=c.create_string_buffer(data);source=Blob(len(data),c.cast(buf,c.POINTER(c.c_ubyte)));out=Blob()
     api=c.WinDLL('crypt32',use_last_error=True);kernel=c.WinDLL('kernel32',use_last_error=True)
     kernel.LocalFree.argtypes=[c.c_void_p];kernel.LocalFree.restype=c.c_void_p
@@ -236,7 +239,7 @@ class WindowsWireGuard:
 
 class ProfileStore:
     def __init__(self,folder,backend=None):
-        self.folder=Path(folder);self.backend=backend or WindowsWireGuard()
+        self.folder=Path(folder);self.backend=backend or (WindowsWireGuard() if os.name=='nt' else __import__('netcroc.posix_network',fromlist=['WireGuard']).WireGuard())
 
     def _path(self,identifier):
         tunnel_name(identifier)
@@ -274,7 +277,7 @@ class ProfileStore:
         self.backend.require_admin()
         data=json.loads(self._path(identifier).read_text(encoding='utf-8'))
         try:text=crypt(base64.b64decode(data['protected'],validate=True),decrypt=True).decode('utf-8')
-        except Exception:raise ValueError('Could not unlock this profile. Re-import it using this Windows account.') from None
+        except Exception:raise ValueError('Could not unlock this profile. Re-import it using this OS account.') from None
         return self.backend.connect(tunnel_name(identifier),text)
 
     def disconnect(self,identifier):return self.backend.disconnect(tunnel_name(identifier))

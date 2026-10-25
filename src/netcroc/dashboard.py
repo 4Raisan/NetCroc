@@ -232,9 +232,19 @@ class Dashboard:
         self.wifi_table=table(tab,('Saved profile','State','Password','Security','Adapter'),[230,100,290,110,220])
         line=ttk.Frame(tab); line.pack(fill='x')
         ttk.Button(line,text='Refresh profiles',command=self.refresh_wifi).pack(side='left')
+        if os.name!='nt':ttk.Button(line,text='Reveal selected password',command=self.reveal_wifi).pack(side='left',padx=6)
         ttk.Button(line,text='Connect selected',command=lambda:self.wifi_action('connect')).pack(side='left',padx=6)
         ttk.Button(line,text='Forget selected',command=lambda:self.wifi_action('forget')).pack(side='left')
         ttk.Label(tab,text='Connect asks before switching networks. Forget is blocked for the connected profile.\nWi-Fi usage: History → Last 30 days, Last month or This month → Wi-Fi / adapters.',wraplength=950).pack(anchor='w',pady=12)
+
+    def reveal_wifi(self):
+        selected=self.wifi_table.selection()
+        if not selected:return
+        item=self.profiles[self.wifi_table.index(selected[0])]
+        wifi=Wifi()
+        try:messagebox.showinfo('Saved Wi-Fi password',wifi.password(item))
+        except OSError:messagebox.showerror('Saved Wi-Fi password','The OS denied password access or no stored password was found.')
+        finally:wifi.close()
 
     def refresh_wifi(self):
         def work():
@@ -368,6 +378,9 @@ class Dashboard:
                                 # psutil AF_LINK MAC identity avoids localized adapter names.
                                 for name,addresses in psutil.net_if_addrs().items():
                                     if any(a.address==interface.description for a in addresses):wifi_names[name]=profile
+                                # POSIX interfaces already use native interface names.
+                                if os.name!='nt':
+                                    wifi_names[str(interface.guid)]=profile;continue
                                 # Windows adapter GUID -> friendly name from registry.
                                 try:
                                     import winreg

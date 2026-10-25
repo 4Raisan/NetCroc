@@ -1,3 +1,4 @@
+import os
 import ctypes
 from datetime import date,datetime,timedelta
 from pathlib import Path
@@ -78,6 +79,7 @@ class AccountingTests(unittest.TestCase):
             output=Path(directory)/'usage.csv'; history.export(output,day,day,'adapter','network')
             self.assertIn("'=bad",output.read_text(encoding='utf-8-sig')); history.close()
 
+@unittest.skipUnless(os.name=='nt','Windows ETW; POSIX metadata attribution has separate tests')
 class CaptureTests(unittest.TestCase):
     def test_native_x64_layout(self):
         if ctypes.sizeof(ctypes.c_void_p)!=8:self.skipTest('x64 layout')
@@ -139,6 +141,7 @@ class CaptureTests(unittest.TestCase):
                 self.assertEqual(capture.drain(),{(123,local):[0,1500] if up else [1500,0]})
 
 class WifiTests(unittest.TestCase):
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_native_connection_prefix_state_precedes_mode(self):
         name='Lab profile'.encode('utf-16-le')
         value=Connection.from_buffer_copy(struct.pack('<II',1,0)+name+bytes(512-len(name)))
@@ -185,6 +188,7 @@ class DnsTests(unittest.TestCase):
         backend.healthy.side_effect=healthy
         return dns.DnsManager(Path(directory)/'dns.json',backend=backend,guard=MagicMock())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dns_success_saves_original_before_mutation_and_restores_dhcp(self):
         with tempfile.TemporaryDirectory() as directory:
             manager=self.manager(directory,[True,True])
@@ -195,18 +199,21 @@ class DnsTests(unittest.TestCase):
             manager.backend.set.side_effect=None;manager.restore()
             self.assertEqual(manager.backend.set.call_args.args[1],[]);self.assertEqual(manager.load()['state'],'restored')
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dns_failure_rolls_back(self):
         with tempfile.TemporaryDirectory() as directory:
             manager=self.manager(directory,[True,False])
             with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=1),patch.object(dns,'query',return_value=1),self.assertRaises(OSError):manager.apply({},['1.1.1.1'])
             self.assertEqual(manager.load()['state'],'restored');self.assertEqual(manager.backend.set.call_count,2)
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dns_no_admin_never_mutates(self):
         with tempfile.TemporaryDirectory() as directory:
             manager=self.manager(directory,[])
             with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=0),self.assertRaises(PermissionError):manager.apply({},['1.1.1.1'])
             manager.backend.set.assert_not_called();self.assertFalse(manager.path.exists())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dns_preflight_failure_never_mutates(self):
         with tempfile.TemporaryDirectory() as directory:
             manager=self.manager(directory,[])
@@ -228,6 +235,7 @@ class DnsTests(unittest.TestCase):
         with patch.object(dns,'DnsManager',return_value=manager),patch('time.sleep'):dns.watchdog('unused','old')
         manager.restore.assert_not_called()
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_watchdog_starts_independently_and_confirms_readiness(self):
         with tempfile.TemporaryDirectory() as directory:
             manager=dns.DnsManager(Path(directory)/'dns.json')
@@ -238,6 +246,7 @@ class DnsTests(unittest.TestCase):
                 return MagicMock()
             with patch.object(dns.subprocess,'Popen',side_effect=spawn):manager.launch_guard()
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_failed_guard_never_applies_candidate_dns(self):
         with tempfile.TemporaryDirectory() as directory:
             manager=self.manager(directory,[True]);manager.guard.side_effect=OSError('guard failed')
@@ -246,6 +255,7 @@ class DnsTests(unittest.TestCase):
             self.assertEqual(manager.backend.set.call_count,1)
             self.assertEqual(manager.backend.set.call_args.args[1],[])
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_native_adapter_read_finds_real_names(self):
         values=dns.adapters()
         self.assertTrue(all(isinstance(a['index'],int) and a['name'] and a['guid'] for a in values))
@@ -254,7 +264,7 @@ class DnsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             report=Path(directory)/'health.txt'
             result=subprocess.run([sys.executable,str(Path(__file__).resolve().parents[1]/'src'/'app.py'),'--dns-health',
-                '--dns-health-report',str(report)],timeout=30,creationflags=subprocess.CREATE_NO_WINDOW)
+                '--dns-health-report',str(report)],timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
             self.assertIn(result.returncode,(0,2))
             self.assertTrue(report.exists(),'Health flag opened another mode instead of the read-only helper')
             self.assertEqual(report.read_text(),str(result.returncode))

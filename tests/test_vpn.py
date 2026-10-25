@@ -54,12 +54,14 @@ class VpnTests(unittest.TestCase):
         _,meta=vpn.parse_config(value+'\n[Peer]\nPublicKey = '+PRIVATE+'\nAllowedIPs = 10.4.0.0/24\nEndpoint = second.example.com:53\n')
         self.assertEqual(meta['peers'],2)
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dpapi_user_and_machine_round_trip(self):
         for machine in (False,True):
             protected=vpn.crypt(b'synthetic-secret-only',description='NetCroc-test',machine=machine)
             self.assertNotIn(b'synthetic-secret-only',protected)
             self.assertEqual(vpn.crypt(protected,decrypt=True),b'synthetic-secret-only')
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_profile_persistence_is_encrypted_and_import_has_no_backend_effect(self):
         with tempfile.TemporaryDirectory() as folder:
             backend=MagicMock();store=vpn.ProfileStore(Path(folder)/'profiles',backend)
@@ -83,6 +85,7 @@ class VpnTests(unittest.TestCase):
             with patch.object(vpn,'crypt') as decrypt,self.assertRaises(PermissionError):store.connect('a'*32)
             decrypt.assert_not_called();backend.connect.assert_not_called()
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_remove_blocks_existing_tunnel_and_only_removes_selected_saved_file(self):
         with tempfile.TemporaryDirectory() as folder:
             backend=MagicMock();store=vpn.ProfileStore(folder,backend)
@@ -110,6 +113,7 @@ class VpnTests(unittest.TestCase):
             with self.assertRaises(ValueError):store.import_file(path)
             self.assertFalse(store.folder.exists())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_backend_nonadmin_connect_and_disconnect_never_invoke_commands(self):
         backend=vpn.WindowsWireGuard()
         with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=0),patch.object(backend,'_run') as run:
@@ -117,6 +121,7 @@ class VpnTests(unittest.TestCase):
             with self.assertRaises(PermissionError):backend.disconnect('NetCroc-'+'a'*20)
             run.assert_not_called()
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_backend_writes_encrypted_runtime_and_service_commands(self):
         with tempfile.TemporaryDirectory() as folder:
             backend=vpn.WindowsWireGuard();name='NetCroc-'+'a'*20;path=Path(folder)/'service'/(name+'.conf.dpapi')
@@ -131,12 +136,14 @@ class VpnTests(unittest.TestCase):
                 self.assertEqual(commands[1][-2:],['start=','demand'])
                 backend.disconnect(name);self.assertFalse(path.exists())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_backend_refuses_other_running_tunnels(self):
         backend=vpn.WindowsWireGuard();service=MagicMock();service.name.return_value='WireGuardTunnel$other';service.status.return_value='running'
         with patch.object(backend,'require_admin'),patch.object(backend,'installed',return_value=Path('C:/WireGuard/wireguard.exe')),patch.object(backend,'state',return_value='not installed'),patch.object(vpn.psutil,'win_service_iter',return_value=[service]),patch.object(backend,'_run') as run:
             with self.assertRaises(ValueError):backend.connect('NetCroc-'+'a'*20,CONFIG)
             run.assert_not_called()
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_failed_install_triggers_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
             backend=vpn.WindowsWireGuard();name='NetCroc-'+'a'*20
@@ -145,6 +152,7 @@ class VpnTests(unittest.TestCase):
                 with self.assertRaises(OSError):backend.connect(name,CONFIG)
                 disconnect.assert_called_once_with(name)
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_native_service_descriptor_parses_without_applying_permissions(self):
         native=vpn.c.WinDLL('advapi32',use_last_error=True)
         original=vpn.c.WinDLL
@@ -157,6 +165,7 @@ class VpnTests(unittest.TestCase):
         self.assertIsNotNone(setter.call_args.args[3])
         self.assertFalse(Path('synthetic-not-created').exists())
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_acl_failure_never_writes_service_credentials_or_starts_tunnel(self):
         with tempfile.TemporaryDirectory() as folder:
             backend=vpn.WindowsWireGuard();name='NetCroc-'+'a'*20
@@ -165,6 +174,7 @@ class VpnTests(unittest.TestCase):
                 with self.assertRaises(OSError):backend.connect(name,CONFIG)
                 self.assertFalse(path.exists());run.assert_not_called()
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_running_service_is_not_reported_as_a_handshake(self):
         backend=vpn.WindowsWireGuard()
         with patch.object(backend,'state',return_value='running'),patch.object(backend,'installed',return_value=None):
