@@ -13,6 +13,7 @@ from .history import speed
 class SSHTab:
     def __init__(self, app, notebook, folder, diagnostic=False):
         self.root = app.root
+        self.app = app
         self.closed = False
         self.busy = False
         self.events = queue.Queue()
@@ -92,6 +93,9 @@ class SSHTab:
             self.store.remove(identifier); self.refresh()
 
     def connect(self):
+        vless_tab=getattr(self.app.dashboard,'vless_tab',None)
+        if vless_tab and vless_tab.session and not vless_tab.session.cancel.is_set():
+            raise ValueError('Disconnect VLESS before connecting SSH.')
         if self.busy or (self.session and not self.session.cancel.is_set()):
             raise ValueError('Disconnect the current session before connecting another profile.')
         identifier = self.selected(); value = self.store.load(identifier)

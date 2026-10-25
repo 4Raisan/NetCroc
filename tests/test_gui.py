@@ -13,9 +13,18 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.ui import App
 
 class GuiTests(unittest.TestCase):
+    def test_vless_profile_screen_and_no_automatic_connection(self):
+        tab=self.app.dashboard.vless_tab
+        self.assertIsNone(tab.session)
+        with patch('netcroc.vless_ui.vless.Session') as session:
+            with self.assertRaises(ValueError):tab.connect()
+            session.assert_not_called()
+        tab.edit()
+        window=next(w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel))
+        window.destroy()
     def test_ssh_tab_and_editor_have_all_configuration_pages(self):
         tab=self.app.dashboard.ssh_tab
-        self.assertEqual(len(self.app.dashboard.notebook.tabs()),8)
+        self.assertEqual(len(self.app.dashboard.notebook.tabs()),9)
         tab.edit()
         windows=[w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel)]
         self.assertEqual(len(windows),1)

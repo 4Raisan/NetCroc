@@ -125,7 +125,10 @@ class Routing:
         if not ctypes.windll.shell32.IsUserAnAdmin():
             raise PermissionError('Whole-PC TCP mode needs Run as administrator. Local SOCKS5 does not.')
         import psutil
-        if any('wireguard' in a.lower() or a == 'NetCrocSSH' for a in psutil.net_if_addrs()):
+        for service in psutil.win_service_iter():
+            if service.name().startswith('WireGuardTunnel$') and service.status()!='stopped':
+                raise ValueError('Disconnect the active WireGuard tunnel before whole-PC routing.')
+        if any('wireguard' in a.lower() or a in ('NetCrocSSH','NetCrocVLESS') for a in psutil.net_if_addrs()):
             raise ValueError('Disconnect other VPN/TUN adapters before Whole-PC TCP mode.')
         self.check()
 
