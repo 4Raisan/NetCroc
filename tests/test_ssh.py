@@ -273,6 +273,7 @@ class SSHTests(unittest.TestCase):
             core.exe.write_bytes(b'changed')
             with self.assertRaises(ValueError): core.verify()
 
+    @unittest.skipUnless(os.name=='nt','Windows job launch; POSIX supervisor and isolated TUN lab cover native launch')
     def test_routing_launch_is_job_protected_before_configuration_is_sent(self):
         order = []; process = MagicMock(); process.poll.return_value=None
         process.stdin.write.side_effect=lambda data: order.append('config')
@@ -284,6 +285,7 @@ class SSHTests(unittest.TestCase):
                 core.stop(); self.assertFalse(core.active)
                 process.terminate.assert_called_once()
 
+    @unittest.skipUnless(os.name=='nt','Windows job launch; POSIX supervisor and isolated TUN lab cover native launch')
     def test_routing_job_failure_never_receives_configuration(self):
         process = MagicMock(); process.poll.return_value=None
         with tempfile.TemporaryDirectory() as folder:

@@ -90,6 +90,7 @@ class Routing:
         self.folder = Path(folder)
         self.exe = self.folder / ('sing-box.exe' if os.name=='nt' else 'sing-box')
         self.process = self.job = None
+        self.remote = None
         self.active = False
         self.lock = threading.RLock()
 
@@ -148,7 +149,7 @@ class Routing:
 
     def preflight(self):
         from .platforms import admin
-        if not admin():
+        if os.name=='nt' and not admin():
             raise PermissionError('Whole-PC TCP mode needs Run as administrator. Local SOCKS5 does not.')
         import psutil
         for service in (psutil.win_service_iter() if os.name=='nt' else []):
@@ -156,7 +157,7 @@ class Routing:
                 raise ValueError('Disconnect the active WireGuard tunnel before whole-PC routing.')
         if any('wireguard' in a.lower() or a in ('NetCrocSSH','NetCrocVLESS') for a in psutil.net_if_addrs()):
             raise ValueError('Disconnect other VPN/TUN adapters before Whole-PC TCP mode.')
-        if os.name!='nt' and any(n.startswith(('utun','wg','nc')) for n in psutil.net_if_addrs()):
+        if os.name!='nt' and any(n.startswith(('wg','nc')) for n in psutil.net_if_addrs()):
             raise ValueError('Disconnect other VPN/TUN adapters first.')
         self.check()
 
@@ -164,6 +165,11 @@ class Routing:
         self.preflight()
         self.check(port, upstream)
         with self.lock:
+            if os.name!='nt':
+                from .tun_service import RemoteRouting
+                self.remote=RemoteRouting()
+                self.remote.start(self.exe,'ssh',upstream,port=port)
+                self.active=True;return
             try:
                 self.process = subprocess.Popen([str(self.exe), 'run', '-c', 'stdin'],
                     stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -185,11 +191,14 @@ class Routing:
                 self.stop(); raise
 
     def healthy(self):
+        if self.remote:return self.remote.healthy()
         return self.process is not None and self.process.poll() is None
 
     def stop(self):
         with self.lock:
             self.active = False
+            if self.remote:
+                self.remote.stop();self.remote=None
             if self.job:
                 self.job.close(); self.job = None
             if self.process:

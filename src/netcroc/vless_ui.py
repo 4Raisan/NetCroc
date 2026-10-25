@@ -28,7 +28,7 @@ class VlessTab(SSHTab):
         row=ttk.Frame(tab);row.pack(fill='x',pady=8)
         for text,action in [('Download core',lambda:self.run(self.routing.install,lambda _:self.status.set('Verified core downloaded.'))),('Check profile',self.check_profile),('Check public IP through proxy',self.check_ip)]:
             ttk.Button(row,text=text,command=lambda f=action:self.safe(f)).pack(side='left',padx=3)
-        self.status=tk.StringVar(value='Disconnected. Credentials are encrypted for this Windows account.')
+        self.status=tk.StringVar(value='Disconnected. Credentials are encrypted for this OS account.')
         self.ip=tk.StringVar(value='No provider IP check performed.')
         ttk.Label(tab,textvariable=self.status,wraplength=950).pack(anchor='w',pady=6)
         ttk.Label(tab,textvariable=self.ip,wraplength=950).pack(anchor='w')

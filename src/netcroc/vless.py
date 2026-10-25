@@ -167,6 +167,12 @@ class Session(Routing):
         self.profile_id=identifier
         with self.lock:
             try:
+                if p['routing']=='tun' and os.name!='nt':
+                    if self.cancel.is_set():raise OSError('VLESS connection cancelled.')
+                    from .tun_service import RemoteRouting
+                    self.remote=RemoteRouting();self.remote.start(self.exe,'vless',upstream,profile=p)
+                    if self.cancel.is_set():raise OSError('VLESS connection cancelled.')
+                    self.active=True;self.status='Ready · whole-PC VLESS · provider connection not yet verified';return self.status
                 if self.cancel.is_set(): raise OSError('VLESS connection cancelled.')
                 self.process=subprocess.Popen([str(self.exe),'run','-c','stdin'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=HIDDEN)
                 self.job=ChildJob(self.process)

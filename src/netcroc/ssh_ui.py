@@ -133,7 +133,7 @@ class SSHTab:
         account = page('Account')
         for row, (field, title) in enumerate([('label', 'Profile name'), ('host', 'Server hostname'), ('port', 'Server port'), ('username', 'Username'), ('password', 'Password'), ('expires', 'Expiry YYYY-MM-DD')]):
             entry(account, row, field, title, field == 'password')
-        ttk.Label(account, text='Account creation and renewal happen on the provider website.\nPasswords are saved encrypted for this Windows account.', wraplength=600).grid(row=7, column=0, columnspan=2, sticky='w', pady=15)
+        ttk.Label(account, text='Account creation and renewal happen on the provider website.\nPasswords are saved encrypted for this OS account.', wraplength=600).grid(row=7, column=0, columnspan=2, sticky='w', pady=15)
         tls = page('TLS and trust')
         variables['tls'] = tk.BooleanVar(value=value['tls'])
         ttk.Checkbutton(tls, text='Wrap SSH inside TLS (TLS 1.2 or newer)', variable=variables['tls']).grid(row=0, column=0, columnspan=2, sticky='w')
