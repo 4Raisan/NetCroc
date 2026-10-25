@@ -12,6 +12,7 @@ import json
 import logging
 from pathlib import Path
 import re
+import select
 import socket
 import ssl
 import struct
@@ -171,6 +172,74 @@ def close_stream(stream):
             pass
 
 
+class TLSStream:
+    """Own TLS I/O on one thread; expose a normal socket to Paramiko.
+
+    Paramiko reads and writes on different threads. Sharing an SSLSocket across
+    those threads caused intermittent Windows WSAEWOULDBLOCK during login.
+    Bounded queues provide backpressure without concurrent OpenSSL calls.
+    """
+    def __init__(self, secure):
+        self.socket,self.relay=socket.socketpair()
+        self.secure=secure
+        self.socket.settimeout(10)
+        self.relay.setblocking(False);secure.setblocking(False)
+        self.closed=threading.Event()
+        self.thread=threading.Thread(target=self._pump,daemon=True)
+        self.thread.start()
+
+    def __getattr__(self,name):
+        return getattr(self.socket,name)
+
+    def _pump(self):
+        up=bytearray();down=bytearray();read_wants_write=False;write_wants_read=False
+        eof=False;limit=1024*1024;writing=b''
+        try:
+            while not self.closed.is_set():
+                if eof and not down:break
+                readers=[];writers=[]
+                if not eof and len(up)<limit:readers.append(self.relay)
+                if not eof and (len(down)<limit or write_wants_read):readers.append(self.secure)
+                if down:writers.append(self.relay)
+                if not eof and (up or read_wants_write):writers.append(self.secure)
+                pending=not eof and len(down)<limit and self.secure.pending()>0
+                ready_r,ready_w,_=select.select(readers,writers,[],0 if pending else .1)
+                if self.relay in ready_r:
+                    data=self.relay.recv(65536)
+                    if not data:break
+                    up.extend(data)
+                if down and self.relay in ready_w:
+                    try:
+                        sent=self.relay.send(down)
+                        if not sent:break
+                        del down[:sent]
+                    except BlockingIOError:pass
+                if not eof and len(down)<limit and (pending or self.secure in ready_r or read_wants_write and self.secure in ready_w):
+                    try:
+                        data=self.secure.recv(65536);read_wants_write=False
+                        if data:down.extend(data)
+                        else:eof=True
+                    except ssl.SSLWantWriteError:read_wants_write=True
+                    except (ssl.SSLWantReadError,BlockingIOError):pass
+                if not eof and up and (self.secure in ready_w or write_wants_read and self.secure in ready_r):
+                    try:
+                        # OpenSSL requires the same bytes on a WANT_READ/WRITE
+                        # retry, even if more application data has arrived.
+                        if not writing:writing=bytes(up[:65536])
+                        sent=self.secure.send(writing);write_wants_read=False
+                        if not sent:break
+                        del up[:sent];writing=b''
+                    except ssl.SSLWantReadError:write_wants_read=True
+                    except (ssl.SSLWantWriteError,BlockingIOError):pass
+        except (OSError,ValueError):pass
+        finally:
+            self.closed.set();close_stream(self.relay);close_stream(self.secure)
+
+    def close(self):
+        self.closed.set();close_stream(self.socket)
+        if threading.current_thread() is not self.thread:self.thread.join(timeout=1)
+
+
 def open_stream(profile, inspect=False, register=lambda stream: None):
     """Plain socket -> optional HTTP CONNECT -> prelude -> TLS/SNI -> postlude."""
     host = profile['proxy_host'] or profile['host']
@@ -208,6 +277,9 @@ def open_stream(profile, inspect=False, register=lambda stream: None):
                         tls_mode='Pinned certificate' if pin else ('Inspection only' if inspect else 'CA + hostname'))
         if profile['payload_after']:
             http_prelude(stream, render_payload(profile['payload_after'], profile))
+        if profile['tls']:
+            stream=TLSStream(stream)
+            register(stream)
         return stream, info
     except Exception:
         close_stream(stream)

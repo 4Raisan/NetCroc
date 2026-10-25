@@ -15,6 +15,7 @@ import threading
 import time
 import unittest
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch, MagicMock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import paramiko
@@ -83,6 +84,7 @@ class Endpoint:
             if self.before: self.prelude(sock)
             if self.context: sock = self.context.wrap_socket(sock, server_side=True)
             if self.after: self.prelude(sock)
+            if self.context: sock = ssh.TLSStream(sock)
             transport = paramiko.Transport(sock); transport.set_log_channel('netcroc.ssh'); self.transports.append(transport)
             transport.add_server_key(self.key); transport.start_server(server=self.server)
             while not self.closed.is_set() and transport.is_active():
@@ -117,6 +119,26 @@ class Endpoint:
 
 
 class SSHTests(unittest.TestCase):
+    def test_tls_parallel_channels(self):
+        endpoint=self.endpoint(tls=True);session=self.session(endpoint.profile())
+        def transfer(index):
+            sock=socket.create_connection(('127.0.0.1',session.socks.port),timeout=8)
+            try:
+                sock.sendall(b'\x05\x01\x00');self.assertEqual(ssh.receive_exact(sock,2),b'\x05\x00')
+                host=b'example.com'
+                sock.sendall(b'\x05\x01\x00\x03'+bytes([len(host)])+host+struct.pack('!H',443))
+                self.assertEqual(ssh.receive_exact(sock,10)[1],0)
+                for sequence in range(6):
+                    payload=(f'{index}:{sequence}:'.encode()*8192)[:32768]
+                    sock.sendall(payload)
+                    self.assertEqual(ssh.receive_exact(sock,len(payload)),payload)
+            finally:sock.close()
+        with ThreadPoolExecutor(max_workers=8) as pool:list(pool.map(transfer,range(24)))
+        relays=[r for r in session.resources if isinstance(r,ssh.TLSStream)]
+        session.stop()
+        self.assertTrue(relays)
+        self.assertTrue(all(not r.thread.is_alive() for r in relays))
+
     def endpoint(self, **kwargs):
         endpoint = Endpoint(**kwargs); self.addCleanup(endpoint.close); return endpoint
 
