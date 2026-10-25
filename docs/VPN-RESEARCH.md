@@ -1,3 +1,18 @@
+## WireGuard implementation update — 25 October 2026
+
+The local application now includes a VPN tab with standard WireGuard `.conf` import, user-DPAPI encrypted saved profiles, administrator/System-only encrypted service files under Program Files, explicit administrator connect/disconnect through the official WireGuard Windows CLI, service status, latest-handshake status when available, and optional public IPv4 baseline comparison. No real provider credentials or live tunnel were used in development tests. The remaining historical research below predates this implementation.
+
+Official sources checked:
+- https://protonvpn.com/support/wireguard-configurations — Free accounts can generate configurations.
+- https://mullvad.net/en/help/wireguard-app-windows — Standard account configuration generation.
+- https://www.ivpn.net/setup/windows-10-wireguard/ — Account configuration download and Windows import.
+- https://windscribe.com/knowledge-base/articles/where-do-i-access-my-wireguard-configs — Configuration generator; paid plans apply.
+- https://windscribe.com/knowledge-base/articles/what-routers-are-supported-by-windscribe — Pro or Build-A-Plan requirement.
+- https://git.zx2c4.com/wireguard-windows/about/docs/enterprise.md — Tunnel service commands and encrypted `.conf.dpapi` format.
+- https://git.zx2c4.com/wireguard-windows/plain/conf/dpapi/dpapi_windows.go — DPAPI ciphertext and description/name matching.
+
+The integration does not install WireGuard, request elevation automatically, promise leak protection, provide servers/accounts, or alter ISP charging. A live successful handshake, service recovery and IP-change verification require a valid user-owned profile and controlled administrator testing at the PC.
+
 # NetCroc: free VPN/VPS research and custom profile design
 
 Client research date: 25 October 2026. Scope: primary-source research and two read-only public-IP checks from the PC. No VPN was installed, connected, disconnected or reconfigured; DNS and Wi-Fi settings were not changed. No cloud account/server was created. The current NetCroc application has not gained VPN support in this research turn.

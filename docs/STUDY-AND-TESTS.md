@@ -1,3 +1,9 @@
+## WireGuard local feature validation — 25 October 2026
+
+86 source tests passed, including 17 new VPN backend/vault tests and 2 VPN GUI tests. Real Windows DPAPI user- and machine-scope encryption/decryption was exercised using synthetic secrets. Service installation, access-control handling, failure cleanup, existing-tunnel protection and non-admin blocking were tested with mocked Windows service operations. The VPN tab was rendered and inspected.
+
+No provider profile or official WireGuard installation is present on this PC. No tunnel, route, DNS or Wi-Fi changes, installer or elevation prompt were used. An actual service connection/handshake, provider IP change and leak protection remain unverified. Optional public IP display is not a DNS/IPv6 leak test.
+
 ## NetCroc rename and structure cleanup — 25 October 2026
 
 The active source is now `src/netcroc`, tests are in `tests`, maintainer scripts in `tools`, assets in `assets` and research in `docs`. The previous project folder is preserved as a recovery copy. No Git commits, pushes or releases were made by this cleanup.
