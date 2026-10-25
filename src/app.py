@@ -64,6 +64,15 @@ def health_status():
 
 if __name__ == '__main__':
     try:
+        if '--native-control' in sys.argv:
+            from netcroc.platforms import native_control
+            native_control(sys.argv[sys.argv.index('--native-control')+1])
+            raise SystemExit(0)
+        if '--child-watch' in sys.argv:
+            from netcroc.platforms import watch_child
+            i=sys.argv.index('--child-watch')
+            watch_child(int(sys.argv[i+1]),float(sys.argv[i+2]),int(sys.argv[i+3]))
+            raise SystemExit(0)
         if '--dns-health' in sys.argv:
             import os
             status = health_status()

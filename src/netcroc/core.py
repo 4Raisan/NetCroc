@@ -46,13 +46,17 @@ def probe(target, protocol):
                 status = response.code
                 response.close()
             return True, round((time.monotonic()-start)*1000), f'HTTP {status} · server responded'
-        result = subprocess.run(['ping.exe', '-n', '1', '-w', '1500', target], capture_output=True,
-                                creationflags=subprocess.CREATE_NO_WINDOW, timeout=4)
+        from .platforms import ping_command
+        result = subprocess.run(ping_command(target), capture_output=True,
+                                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0), timeout=4)
         return result.returncode == 0, round((time.monotonic()-start)*1000), 'Ping reply' if result.returncode == 0 else 'No ping reply'
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         return False, round((time.monotonic()-start)*1000), type(error).__name__ + ' · check connection or target'
 
 def data_folder():
+    if os.name!='nt':
+        from .platforms import data_folder as native_folder
+        return native_folder()
     base=Path(os.environ.get('LOCALAPPDATA',str(Path.home())))
     legacy=base/'ConnectionTrayPreview'
     return legacy if legacy.exists() else base/'NetCroc'
@@ -85,6 +89,9 @@ def startup_command():
     return subprocess.list2cmdline([str(pythonw), str(Path(__file__).resolve().parents[1] / 'app.py'), '--tray'])
 
 def set_startup(enabled):
+    if os.name!='nt':
+        from .platforms import startup
+        return startup(enabled)
     import winreg
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Microsoft\Windows\CurrentVersion\Run', 0, winreg.KEY_SET_VALUE) as key:
         if enabled:

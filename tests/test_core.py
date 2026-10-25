@@ -1,3 +1,4 @@
+import os
 import sys
 import tempfile
 import unittest
@@ -44,6 +45,7 @@ class CoreTests(unittest.TestCase):
         with patch('urllib.request.urlopen', side_effect=urllib.error.HTTPError('https://example.com', 403, '', {}, None)):
             self.assertTrue(probe('https://example.com', 'HTTP')[0])
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_timeout_and_hidden_ping(self):
         with patch('urllib.request.urlopen', side_effect=TimeoutError()):
             self.assertFalse(probe('https://example.com', 'HTTP')[0])
@@ -53,6 +55,7 @@ class CoreTests(unittest.TestCase):
             self.assertNotIn('shell', run.call_args.kwargs)
             self.assertTrue(run.call_args.kwargs['creationflags'])
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_data_folder_preserves_legacy_history_and_uses_new_brand_for_new_users(self):
         from netcroc.core import data_folder
         with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ',LOCALAPPDATA=folder):
@@ -60,10 +63,12 @@ class CoreTests(unittest.TestCase):
             (Path(folder)/'ConnectionTrayPreview').mkdir()
             self.assertEqual(data_folder(),Path(folder)/'ConnectionTrayPreview')
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_startup_quoted_and_tray(self):
         with patch('sys.frozen', True, create=True), patch('sys.executable', 'C:\\My App\\test.exe'):
             self.assertEqual(startup_command(), '"C:\\My App\\test.exe" --tray')
 
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_startup_only_own_registry_value(self):
         from netcroc.core import set_startup
         with patch('winreg.OpenKey', return_value=MagicMock()) as opened, patch('winreg.SetValueEx') as write, patch('winreg.DeleteValue') as remove:
