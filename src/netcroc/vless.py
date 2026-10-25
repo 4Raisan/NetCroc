@@ -113,3 +113,43 @@ class ProfileStore(ssh.ProfileStore):
             value=parse_link(text) if text.startswith('vless://') else validate(json.loads(text))
         except Exception: raise ValueError('Import a supported VLESS link file or NetCroc VLESS JSON profile.') from None
         return self.save(value)
+
+
+def outbound(value,server=None):
+    p=validate(value)
+    result={'type':'vless','tag':'vless','server':server or p['host'],'server_port':p['port'],'uuid':p['uuid']}
+    if p['flow']: result['flow']=p['flow']
+    if p['security']!='none':
+        tls={'enabled':True,'server_name':p['sni'] or p['host'],'min_version':'1.2'}
+        if p['ca_pem']: tls['certificate']=p['ca_pem']
+        if p['alpn']: tls['alpn']=[a.strip() for a in p['alpn'].split(',') if a.strip()]
+        if p['fingerprint']: tls['utls']={'enabled':True,'fingerprint':p['fingerprint']}
+        if p['security']=='reality': tls['reality']={'enabled':True,'public_key':p['reality_key'],'short_id':p['short_id']}
+        result['tls']=tls
+    if p['transport']!='tcp':
+        transport={'type':p['transport']}
+        if p['transport']=='grpc': transport['service_name']=p['service_name']
+        else:
+            transport['path']=p['path']
+            if p['http_host']:
+                if p['transport']=='ws': transport['headers']={'Host':p['http_host']}
+                else: transport['host']=p['http_host']
+        result['transport']=transport
+    return result
+
+
+def config(value,upstream=None):
+    p=validate(value)
+    if p['routing']=='tun':
+        if not upstream: raise ValueError('Resolve the upstream server before whole-PC routing.')
+        result=configuration(p['local_port'],upstream)
+        result['inbounds'][0]['interface_name']='NetCrocVLESS'
+        result['outbounds']=[outbound(p,upstream[0])]
+        result['dns']['servers'][0]['detour']='vless'
+        # VLESS supports UDP through XUDP. ICMP remains rejected.
+        result['route']['rules']=[{'port':53,'action':'hijack-dns'},{'network':'icmp','action':'reject'}]
+        result['route']['final']='vless'
+    else:
+        result={'log':{'level':'warn'},'inbounds':[{'type':'socks','tag':'local','listen':'127.0.0.1','listen_port':p['local_port']}],
+            'outbounds':[outbound(p,upstream[0] if upstream else None)],'route':{'final':'vless'}}
+    return result
