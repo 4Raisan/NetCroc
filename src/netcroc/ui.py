@@ -95,12 +95,102 @@ class App:
         self.toggle_details()
         from .dashboard import Dashboard
         self.dashboard = Dashboard(self, notebook, diagnostic)
+        from .tray_mode import TrayOverlay
+        self.overlay = TrayOverlay(self, self.desktop)
         self.shell.finish(self.dashboard, keepalive)
         root.after(150, self.poll)
+        if not diagnostic and self.auto_isp.get(): root.after(700, self.detect_isp)
 
     def values(self):
         return dict(isp=self.isp.get(), custom=self.custom.get().strip(), interval=self.interval.get(),
-                    protocol=self.protocol.get(), details=self.details.get(), startup=self.startup.get(), smart=self.smart.get())
+                    protocol=self.protocol.get(), details=self.details.get(), startup=self.startup.get(), smart=self.smart.get(), auto_isp=self.auto_isp.get())
+
+    def network_key(self):
+        live = getattr(self.dashboard, 'last_live', None) or {}
+        return tuple(sorted(live.get('wifi', {}).items())), tuple(sorted(live.get('up', ())))
+
+    def manual_isp(self, _event=None):
+        self.auto_isp.set(False)
+        self.isp_serial += 1; self.isp_busy = False; self.pending_start = False
+        self.isp_detection.set('Manual choice · '+self.isp.get())
+        if hasattr(self, 'shell'): self.shell.update_toggle()
+
+    def change_isp_mode(self):
+        if self.auto_isp.get(): self.detect_isp()
+        else: self.manual_isp()
+
+    def detect_isp(self, force=False, start_after=False):
+        self.pending_start = self.pending_start or start_after
+        if self.isp_busy: return
+        now = time.monotonic()
+        if self.isp_checked_at is not None and now-self.isp_checked_at < (30 if force else 1800) and self.isp_checked_network==self.network_key():
+            self.receive_isp(self.isp_serial,self.isp_cached,self.isp_cached_error,cached=True)
+            return
+        self.isp_serial += 1; serial = self.isp_serial
+        self.isp_busy = True
+        self.isp_detection.set('Checking your network provider…')
+        if start_after: self.status.set('Detecting ISP before starting checks…')
+        self.shell.update_toggle()
+        def work():
+            try:
+                from .isp import lookup
+                value = lookup(); error = None
+            except Exception as failure:
+                value = None; error = type(failure).__name__
+            self.events.put(('isp', (serial, value, error)))
+        threading.Thread(target=work, daemon=True).start()
+
+    def receive_isp(self, serial, value, error, cached=False):
+        if serial != self.isp_serial: return
+        self.isp_busy = False
+        if not cached:
+            self.isp_checked_at = time.monotonic(); self.isp_checked_network = self.network_key()
+            self.isp_cached = value; self.isp_cached_error = error
+        if self.auto_isp.get() and value and value.get('isp'):
+            self.isp.set(value['isp'])
+            self.isp_detection.set('Detected '+value['isp']+' · public network lookup. VPNs may show a different provider.')
+            if not self.diagnostic:
+                try: self.store.save(self.values())
+                except (ValueError, OSError): pass
+            if not self.running: self.status.set('Ready · '+self.isp.get())
+        elif value and value.get('isp'):
+            self.isp_detection.set('Detected '+value['isp']+' · keeping your manual choice '+self.isp.get()+'.')
+        elif value:
+            self.isp_detection.set(value['provider']+' · no matching preset; keeping '+self.isp.get()+'. Choose manually if needed.')
+        else:
+            self.isp_detection.set('Could not detect ISP; keeping '+self.isp.get()+'. You can choose it manually.')
+        resume = self.pending_start; self.pending_start = False
+        self.shell.update_toggle()
+        if resume: self.start(automatic=True, resolved=True)
+
+    def enable_app_tracking(self):
+        from .platforms import admin
+        if os.name != 'nt' or admin():
+            self.shell.open('Live traffic'); return
+        if self.dashboard.ssh_tab.session or self.dashboard.vless_tab.session:
+            messagebox.showinfo('Enable app tracking', 'Disconnect your SSH/VLESS tunnel before restarting NetCroc.'); return
+        import subprocess
+        import psutil
+        args = ([] if getattr(sys, 'frozen', False) else [str(__import__('pathlib').Path(__file__).resolve().parents[1]/'app.py')])
+        args += ['--after-exit', str(os.getpid()), str(psutil.Process().create_time())]
+        if self.running: args.append('--resume-checks')
+        try:
+            if not self.diagnostic: self.store.save(self.values())
+            launch = ctypes.windll.shell32.ShellExecuteW
+            launch.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_int]
+            launch.restype = ctypes.c_void_p
+            result = launch(None, 'runas', sys.executable, subprocess.list2cmdline(args), None, 1) or 0
+            if result <= 32:
+                messagebox.showinfo('App tracking not enabled', 'Windows approval was not given. Network totals continue recording.'); return
+            self.quit()
+        except (OSError, ValueError) as error:
+            messagebox.showerror('Enable app tracking', str(error))
+
+    def toggle_advanced(self):
+        if self.advanced.winfo_manager():
+            self.advanced.pack_forget();self.advanced_button.configure(text='More settings')
+        else:
+            self.advanced.pack(fill='x',before=self.status_label);self.advanced_button.configure(text='Fewer settings')
 
     def toggle_details(self):
         if self.details.get():
