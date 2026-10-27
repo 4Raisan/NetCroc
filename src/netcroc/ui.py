@@ -34,22 +34,19 @@ class App:
         self.activity = (0, 0)
         self.closing = False
         root.title('NetCroc · Your quiet network companion.')
-        width=min(1180,max(900,root.winfo_screenwidth()-80))
+        width=min(1120,max(900,root.winfo_screenwidth()-80))
         height=min(800,max(600,root.winfo_screenheight()-120))
         root.geometry(f'{width}x{height}')
-        root.minsize(min(1050,width),min(660,height))
+        root.minsize(min(1000,width),min(720,height))
         root.protocol('WM_DELETE_WINDOW', self.hide)
-        style = ttk.Style(root)
-        style.theme_use('clam')
-        style.configure('TButton', padding=(12, 8))
-        style.configure('TLabel', font=('Segoe UI', 10))
-        notebook = ttk.Notebook(root)
-        notebook.pack(fill='both', expand=True, padx=12, pady=12)
+        from .shell import Shell
+        self.shell = Shell(root, self)
+        notebook = self.shell.book
         keepalive = ttk.Frame(notebook)
         notebook.add(keepalive, text='Keep-alive')
         outer = ttk.Frame(keepalive, padding=24)
         outer.pack(fill='both', expand=True)
-        ttk.Label(outer, text='NetCroc · Your quiet network companion.', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
+        ttk.Label(outer, text='Connection checks', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
         ttk.Label(outer, text='Optional HEAD checks may help idle stalls. No guaranteed speed increase.').pack(anchor='w', pady=(6, 20))
         self.isp = tk.StringVar(value=saved['isp'])
         self.custom = tk.StringVar(value=saved['custom'])
@@ -72,7 +69,7 @@ class App:
         ttk.Checkbutton(outer, text='Optional smart mode: use at least 15s between checks while adapter traffic is busy', variable=self.smart).pack(anchor='w')
         ttk.Checkbutton(outer, text='Show connection checks', variable=self.details, command=self.toggle_details).pack(anchor='w')
         ttk.Label(outer, text='1 second can mean 86,400 checks/day. Failures back off; no setting changes occur automatically.', wraplength=900).pack(anchor='w', pady=10)
-        self.status = tk.StringVar(value='Ready · choose an ISP and press Start')
+        self.status = tk.StringVar(value='Ready · '+saved['isp'])
         ttk.Label(outer, textvariable=self.status, wraplength=900).pack(anchor='w', pady=(18, 10))
         buttons = ttk.Frame(outer)
         buttons.pack(fill='x')
@@ -90,6 +87,7 @@ class App:
         self.toggle_details()
         from .dashboard import Dashboard
         self.dashboard = Dashboard(self, notebook, diagnostic)
+        self.shell.finish(self.dashboard, keepalive)
         root.after(150, self.poll)
 
     def values(self):
