@@ -23,8 +23,12 @@ NetCroc keeps the application, tests, development tools and documentation separa
 |---|---|
 | `app.py` | Entry point, startup error reporting and independent DNS helper modes. |
 | `netcroc/ui.py` | Main window, tray, preferences and application lifetime. |
-| `netcroc/shell.py` | Four-destination navigation, Home overview and grouped tools. |
+| `netcroc/app_names.py` | Friendly application labels, byte-preserving groups and unresolved identity handling. |
+| `netcroc/desktop.py` | Local desktop preferences, monitor geometry and custom window controls. |
+| `netcroc/tray_mode.py` | Optional edge/static overlays and best-effort tunnel/exit observations. |
+| `netcroc/shell.py` | Direct sidebar navigation, Home overview and network tool links. |
 | `netcroc/dashboard.py` | Traffic, history, DNS, Wi-Fi, research and VPN tabs; shared monitoring loop. |
+| `netcroc/isp.py` | Bounded HTTPS ISP lookup and recognized provider mapping; manual fallback. |
 | `netcroc/core.py` | Connection-check settings, presets and shared local-data helpers. |
 | `netcroc/traffic.py` | Adapter rates and Windows ETW per-app byte capture. |
 | `netcroc/history.py` | SQLite recording, rolling/calendar periods, retention and exports. |
