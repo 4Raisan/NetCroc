@@ -46,6 +46,8 @@ class App:
         self.isp_busy = False
         self.isp_serial = 0
         self.pending_start = False
+        self.isp_wifi = None
+        self.isp_wifi_timer = None
         self.isp_checked_at = None
         self.isp_checked_network = None
         self.isp_cached = None
@@ -138,8 +140,33 @@ class App:
         live = getattr(self.dashboard, 'last_live', None) or {}
         return tuple(sorted(live.get('wifi', {}).items())), tuple(sorted(live.get('up', ())))
 
+    def observe_wifi(self, wifi):
+        # Called on the Tk thread with the monitor's current connected SSIDs.
+        current = tuple(sorted(wifi.items()))
+        if current == self.isp_wifi: return
+        self.isp_wifi = current
+        if not self.auto_isp.get(): return
+        # Invalidate even while disconnected: an old network's in-flight
+        # result must never be assigned to the new one.
+        self.isp_serial += 1; self.isp_busy = False
+        self.isp_checked_at = None; self.isp_checked_network = None
+        self.isp_cached = None; self.isp_cached_error = None
+        if self.isp_wifi_timer:
+            self.root.after_cancel(self.isp_wifi_timer); self.isp_wifi_timer = None
+        if not current:
+            self.isp_detection.set('Wi-Fi disconnected · waiting for a network.')
+            return
+        self.isp_detection.set('Wi-Fi changed · detecting your provider…')
+        def check():
+            self.isp_wifi_timer = None
+            if self.auto_isp.get() and self.isp_wifi == current:
+                self.detect_isp()
+        self.isp_wifi_timer = self.root.after(2000, check)
+
     def manual_isp(self, _event=None):
         self.auto_isp.set(False)
+        if self.isp_wifi_timer:
+            self.root.after_cancel(self.isp_wifi_timer); self.isp_wifi_timer = None
         self.isp_serial += 1; self.isp_busy = False; self.pending_start = False
         self.isp_detection.set('Manual choice · '+self.isp.get())
         if hasattr(self, 'shell'): self.shell.update_toggle()
@@ -177,7 +204,7 @@ class App:
             self.isp_cached = value; self.isp_cached_error = error
         if self.auto_isp.get() and value and value.get('isp'):
             self.isp.set(value['isp'])
-            self.isp_detection.set('Detected '+value['isp']+' · public network lookup. VPNs may show a different provider.')
+            self.isp_detection.set('Detected '+value['isp']+' · public network lookup. VPNs may show a different provider.' + (' Restart checks to use this ISP.' if self.running and not self.custom.get().strip() else ''))
             if not self.diagnostic:
                 try: self.store.save(self.values())
                 except (ValueError, OSError): pass
@@ -188,6 +215,14 @@ class App:
             self.isp_detection.set(value['provider']+' · no matching preset; keeping '+self.isp.get()+'. Choose manually if needed.')
         else:
             self.isp_detection.set('Could not detect ISP; keeping '+self.isp.get()+'. You can choose it manually.')
+            if self.auto_isp.get() and self.isp_wifi and not self.isp_wifi_timer:
+                expected = self.isp_wifi
+                def retry():
+                    self.isp_wifi_timer = None
+                    if self.auto_isp.get() and self.isp_wifi == expected:
+                        self.isp_checked_at = None
+                        self.detect_isp()
+                self.isp_wifi_timer = self.root.after(30000, retry)
         resume = self.pending_start; self.pending_start = False
         self.shell.update_toggle()
         if resume: self.start(automatic=True, resolved=True)

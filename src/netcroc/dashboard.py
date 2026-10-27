@@ -566,6 +566,7 @@ class Dashboard:
 
     def live(self,value):
         self.last_live=value
+        self.app.observe_wifi(value.get('wifi', {}))
         interfaces=value['interfaces']; names=[n for n in interfaces if not n.lower().startswith('loopback')]
         self.adapter_box.configure(values=['Auto (active adapter)']+names)
         selected=self.adapter.get()
