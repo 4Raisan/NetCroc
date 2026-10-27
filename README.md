@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="assets/netcroc-banner.svg" alt="NetCroc — Your quiet network companion." width="760">
+</p>
+
+[Logo SVG](assets/netcroc.svg) · [Logo PNG](assets/netcroc.png) · [Banner SVG](assets/netcroc-banner.svg) · [Banner PNG](assets/netcroc-banner.png)
+
 # NetCroc
 
 Your quiet network companion.
