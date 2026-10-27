@@ -205,7 +205,7 @@ def process_identity(pid):
         proc=psutil.Process(pid)
         return proc.exe() or proc.name()
     except (psutil.Error,OSError):
-        return 'System' if pid in (0,4) else f'Unresolved process (PID {pid})'
+        return 'System' if pid in (0,4) else 'Unattributed traffic'
 
 if os.name != "nt":
     from .posix_network import Traffic
