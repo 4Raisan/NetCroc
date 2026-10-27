@@ -55,7 +55,9 @@ Keep-alive is optional and does not guarantee faster downloads or lower game pin
 
 macOS may require an explicit Open approval in Privacy & Security for this unnotarized beta. The builds include an ad-hoc integrity signature, not a trusted Developer ID signature or notarization. Linux needs a graphical desktop; the bundled binary does not include optional system networking tools.
 
-**From source:** install Python 3.12–3.14 with Tcl/Tk, then run from the project root:
+**From source:** On Windows, run `NetCroc-Setup.bat` to check Python/Tk, create a local virtual environment, install the pinned requirements, and launch the app. Install or repair Python 3.12–3.14 from python.org if the helper asks. The packaged EXE already bundles Python.
+
+For manual setup on any platform, install Python 3.12–3.14 with Tcl/Tk, then run from the project root:
 
 ```powershell
 # Windows
@@ -197,3 +199,5 @@ See [test evidence and limits](docs/STUDY-AND-TESTS.md), [network research](docs
 Windows installs use `%LOCALAPPDATA%\NetCroc`; macOS uses `~/Library/Application Support/NetCroc`; Linux uses `$XDG_DATA_HOME/netcroc` (default `~/.local/share/netcroc`). On Windows, if `%LOCALAPPDATA%\ConnectionTrayPreview` exists, NetCroc continues using it to preserve settings, history and pending DNS recovery. Wi-Fi passwords are not stored in the usage database.
 
 The legacy instance-lock identifier also remains intentional. Saving the sign-in preference replaces the old startup entry with `NetCroc`; until then, an old entry may still point to the previous executable. Reorganizing documentation does not migrate local data or change startup/network settings.
+
+The Home screen’s **Check setup** button checks optional WireGuard and the SSH/VLESS routing core. Use its repair button to download the pinned, SHA-256-verified core; WireGuard opens its official installer page. Neither is required for basic monitoring.
