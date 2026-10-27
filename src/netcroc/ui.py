@@ -31,6 +31,8 @@ class App:
     def __init__(self, root, diagnostic=False):
         self.root, self.diagnostic = root, diagnostic
         self.store = Settings()
+        from .desktop import Preferences
+        self.desktop = Preferences(None if diagnostic else self.store.folder/'desktop.json')
         saved = DEFAULTS.copy() if diagnostic else self.store.load()
         self.events = queue.Queue()
         self.stop_event = None
@@ -41,22 +43,39 @@ class App:
         self.compare_stop = threading.Event()
         self.activity = (0, 0)
         self.closing = False
+        self.isp_busy = False
+        self.isp_serial = 0
+        self.pending_start = False
+        self.isp_checked_at = None
+        self.isp_checked_network = None
+        self.isp_cached = None
+        self.isp_cached_error = None
         root.title('NetCroc · Your quiet network companion.')
         width=min(1120,max(900,root.winfo_screenwidth()-80))
         height=min(800,max(600,root.winfo_screenheight()-120))
         root.geometry(f'{width}x{height}')
         root.minsize(min(1000,width),min(720,height))
-        root.protocol('WM_DELETE_WINDOW', self.hide)
+        root.protocol('WM_DELETE_WINDOW', self.close_window)
+        from .desktop import WindowChrome
+        self.window = WindowChrome(self)
         from .shell import Shell
         self.shell = Shell(root, self)
         notebook = self.shell.book
         keepalive = ttk.Frame(notebook)
         notebook.add(keepalive, text='Keep-alive')
-        outer = ttk.Frame(keepalive, padding=24)
-        outer.pack(fill='both', expand=True)
+        viewport=tk.Canvas(keepalive,highlightthickness=0,bg='#f4f7f5')
+        scroll=ttk.Scrollbar(keepalive,orient='vertical',command=viewport.yview)
+        viewport.configure(yscrollcommand=scroll.set)
+        viewport.pack(side='left',fill='both',expand=True);scroll.pack(side='right',fill='y')
+        outer=ttk.Frame(viewport,padding=24)
+        content=viewport.create_window((0,0),window=outer,anchor='nw')
+        outer.bind('<Configure>',lambda _event:viewport.configure(scrollregion=viewport.bbox('all')))
+        viewport.bind('<Configure>',lambda event:viewport.itemconfigure(content,width=event.width))
         ttk.Label(outer, text='Connection checks', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
         ttk.Label(outer, text='Optional HEAD checks may help idle stalls. No guaranteed speed increase.').pack(anchor='w', pady=(6, 20))
         self.isp = tk.StringVar(value=saved['isp'])
+        self.auto_isp = tk.BooleanVar(value=saved['auto_isp'])
+        self.isp_detection = tk.StringVar(value='Automatic lookup uses your public network, not the Wi-Fi name.')
         self.custom = tk.StringVar(value=saved['custom'])
         self.interval = tk.IntVar(value=saved['interval'])
         self.protocol = tk.StringVar(value=saved['protocol'])
@@ -64,21 +83,31 @@ class App:
         self.startup = tk.BooleanVar(value=saved['startup'])
         self.smart = tk.BooleanVar(value=saved['smart'])
         ttk.Label(outer, text='Your ISP').pack(anchor='w')
-        ttk.Combobox(outer, textvariable=self.isp, values=list(PRESETS), state='readonly').pack(fill='x', pady=(5, 12))
-        ttk.Label(outer, text='Custom website or IP (optional)').pack(anchor='w')
-        ttk.Entry(outer, textvariable=self.custom).pack(fill='x', pady=(5, 12))
-        row = ttk.Frame(outer)
+        self.isp_box = ttk.Combobox(outer, textvariable=self.isp, values=list(PRESETS), state='readonly')
+        self.isp_box.pack(fill='x', pady=(5, 4))
+        self.isp_box.bind('<<ComboboxSelected>>', self.manual_isp)
+        isp_row = ttk.Frame(outer); isp_row.pack(fill='x')
+        ttk.Checkbutton(isp_row, text='Detect ISP automatically', variable=self.auto_isp, command=self.change_isp_mode).pack(side='left')
+        ttk.Button(isp_row, text='Detect again', command=lambda: self.detect_isp(force=True)).pack(side='right')
+        ttk.Label(outer, textvariable=self.isp_detection, wraplength=740).pack(anchor='w', pady=(3, 8))
+        self.advanced = ttk.Frame(outer)
+        self.advanced_button = ttk.Button(outer,text='More settings',command=self.toggle_advanced)
+        self.advanced_button.pack(anchor='w',pady=6)
+        ttk.Label(self.advanced, text='Custom website or IP (optional)').pack(anchor='w')
+        ttk.Entry(self.advanced, textvariable=self.custom).pack(fill='x', pady=(5, 12))
+        row = ttk.Frame(self.advanced)
         row.pack(fill='x')
         ttk.Label(row, text='Every').pack(side='left')
         ttk.Combobox(row, textvariable=self.interval, values=(1, 5, 10, 15, 30), width=5, state='readonly').pack(side='left', padx=8)
         ttk.Label(row, text='seconds after each check · no overlap').pack(side='left')
         ttk.Combobox(row, textvariable=self.protocol, values=('HTTP', 'ICMP'), width=7, state='readonly').pack(side='right')
-        ttk.Checkbutton(outer, text='Run automatically when I sign in', variable=self.startup).pack(anchor='w', pady=(18, 4))
-        ttk.Checkbutton(outer, text='Optional smart mode: use at least 15s between checks while adapter traffic is busy', variable=self.smart).pack(anchor='w')
-        ttk.Checkbutton(outer, text='Show connection checks', variable=self.details, command=self.toggle_details).pack(anchor='w')
-        ttk.Label(outer, text='1 second can mean 86,400 checks/day. Failures back off; no setting changes occur automatically.', wraplength=900).pack(anchor='w', pady=10)
+        ttk.Checkbutton(self.advanced, text='Run automatically when I sign in', variable=self.startup).pack(anchor='w', pady=(18, 4))
+        ttk.Checkbutton(self.advanced, text='Optional smart mode: use at least 15s between checks while adapter traffic is busy', variable=self.smart).pack(anchor='w')
+        ttk.Checkbutton(self.advanced, text='Show connection checks', variable=self.details, command=self.toggle_details).pack(anchor='w')
+        ttk.Label(self.advanced, text='1 second can mean 86,400 checks/day. Failures back off; no setting changes occur automatically.', wraplength=900).pack(anchor='w', pady=10)
         self.status = tk.StringVar(value='Ready · '+saved['isp'])
-        ttk.Label(outer, textvariable=self.status, wraplength=900).pack(anchor='w', pady=(18, 10))
+        self.status_label=ttk.Label(outer, textvariable=self.status, wraplength=740)
+        self.status_label.pack(anchor='w', pady=(18,10))
         buttons = ttk.Frame(outer)
         buttons.pack(fill='x')
         self.start_button = ttk.Button(buttons, text='Save & Start', command=self.start)
@@ -198,13 +227,15 @@ class App:
         else:
             self.log.pack_forget()
 
-    def start(self, automatic=False):
+    def start(self, automatic=False, resolved=False):
         if self.comparing:
             return
         if self.worker and self.worker.is_alive():
             if not automatic:
                 messagebox.showinfo('Already running', 'Pause before changing the connection settings.')
             return
+        if self.auto_isp.get() and not resolved and not self.custom.get().strip():
+            self.detect_isp(start_after=True); return
         try:
             settings = self.values()
             target = validate(settings)
@@ -293,6 +324,8 @@ class App:
         self.compare_worker=threading.Thread(target=work,daemon=True);self.compare_worker.start()
 
     def pause(self):
+        if self.pending_start:
+            self.isp_serial += 1; self.pending_start = False; self.isp_busy = False
         if self.comparing:
             self.compare_stop.set()
         if self.stop_event:
@@ -300,6 +333,10 @@ class App:
         self.running = False
         self.status.set('Paused')
         self.update_tray()
+
+    def close_window(self):
+        if self.desktop.data['close_to_tray'] and self.tray: self.hide()
+        else: self.quit()
 
     def hide(self):
         if self.tray:
@@ -325,6 +362,7 @@ class App:
             pystray.Menu(pystray.MenuItem('Open', send('open'), default=True),
                          pystray.MenuItem('Start', send('start'), enabled=lambda item: not self.running),
                          pystray.MenuItem('Pause', send('pause'), enabled=lambda item: self.running),
+                         pystray.MenuItem('Overlay', send('overlay'), checked=lambda item:self.desktop.data['overlay_enabled']),
                          pystray.MenuItem('Quit', send('quit'))))
         self.tray.run_detached()
 
@@ -333,7 +371,9 @@ class App:
             return
         while not self.events.empty():
             action, value = self.events.get()
-            if action == 'result':
+            if action == 'isp':
+                self.receive_isp(*value)
+            elif action == 'result':
                 good, duration, text = value
                 self.status.set(('Running · ' if good else 'Retrying · ') + text)
                 self.update_tray(good)
@@ -360,6 +400,7 @@ class App:
                     self.start(automatic=True)
             elif action == 'stopped':
                 if not self.comparing:self.start_button.configure(state='normal')
+            elif action == 'overlay': self.overlay.enabled.set(not self.overlay.enabled.get())
             elif action == 'open': self.show()
             elif action == 'start': self.start()
             elif action == 'pause': self.pause()
@@ -371,12 +412,15 @@ class App:
         self.root.after(150, self.poll)
 
     def quit(self):
+        if self.closing:return
         self.closing = True
         self.compare_stop.set()
         if self.stop_event:
             self.stop_event.set()
         if self.tray:
             self.tray.stop()
+        self.window.close()
+        self.overlay.close()
         self.dashboard.close()
         self.root.destroy()
 
@@ -415,7 +459,7 @@ def main():
         app.toggle_details()
         root.update_idletasks()
         Path = __import__('pathlib').Path
-        Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps({'gui': 'passed', 'tabs': len(app.dashboard.notebook.tabs()), 'main_destinations': list(app.shell.primary), 'isps': list(PRESETS), 'startup_changed': False, 'network_sent': False, 'capture_started': False, 'dns_changed': False, 'wifi_changed': False}), encoding='utf-8')
+        Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps({'gui': 'passed', 'tabs': len(app.dashboard.notebook.tabs()), 'main_destinations': list(app.shell.primary), 'tool_destinations': list(app.shell.tools), 'isps': list(PRESETS), 'startup_changed': False, 'network_sent': False, 'capture_started': False, 'dns_changed': False, 'wifi_changed': False}), encoding='utf-8')
         app.quit()
         return
     try:
@@ -424,6 +468,7 @@ def main():
         app.tray = None
         app.status.set('Tray unavailable · restart the app; use Quit below to exit.')
         ttk.Button(root, text='Quit', command=app.quit).pack()
+    if '--resume-checks' in sys.argv and '--tray' not in sys.argv: app.start(automatic=True)
     if '--tray' in sys.argv and app.tray:
         app.start(automatic=True)
         app.hide()
@@ -444,7 +489,7 @@ def posix_main(diagnostic):
         if diagnostic:
             root.update_idletasks()
             from pathlib import Path
-            Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps(dict(gui='passed',tabs=len(app.dashboard.notebook.tabs()),main_destinations=list(app.shell.primary),startup_changed=False,network_sent=False,capture_started=False,dns_changed=False,wifi_changed=False)),encoding='utf-8')
+            Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps(dict(gui='passed',tabs=len(app.dashboard.notebook.tabs()),main_destinations=list(app.shell.primary),tool_destinations=list(app.shell.tools),startup_changed=False,network_sent=False,capture_started=False,dns_changed=False,wifi_changed=False)),encoding='utf-8')
             app.quit();return
         try:app.create_tray()
         except Exception:app.tray=None

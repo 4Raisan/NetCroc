@@ -18,23 +18,42 @@ from .history import History,speed,volume,PERIODS,period_bounds
 from .traffic import Rates,Traffic,process_identity
 from .wifi import Wifi
 from . import dns,research,vpn
+from .app_names import aggregate,identity,UNKNOWN
 
 def table(parent,columns,widths=None):
     frame=ttk.Frame(parent); frame.pack(fill='both',expand=True,pady=8)
-    tree=ttk.Treeview(frame,columns=columns,show='headings',height=8)
+    tree=ttk.Treeview(frame,columns=columns,show='headings',height=6)
     for index,col in enumerate(columns):
         tree.heading(col,text=col); tree.column(col,width=widths[index] if widths else 150,minwidth=60,stretch=True)
     scroll=ttk.Scrollbar(frame,orient='vertical',command=tree.yview)
     tree.configure(yscrollcommand=scroll.set)
+    horizontal=ttk.Scrollbar(frame,orient='horizontal',command=tree.xview)
+    tree.configure(xscrollcommand=horizontal.set)
+    horizontal.pack(side='bottom',fill='x')
+    weights=widths or [150]*len(columns)
+    def fit(event):
+        available=max(1,event.width-20);total=sum(weights)
+        for col,weight in zip(columns,weights):tree.column(col,width=max(60,int(available*weight/total)))
+    frame.bind('<Configure>',fit)
     scroll.pack(side='right',fill='y'); tree.pack(fill='both',expand=True)
     return tree
+
+def info_dialog(root,title,*messages):
+    dialog=tk.Toplevel(root);dialog.title(title);dialog.geometry('620x360')
+    from tkinter.scrolledtext import ScrolledText
+    body=ScrolledText(dialog,wrap='word',font=('Segoe UI',10),padx=16,pady=16,bd=0)
+    body.pack(fill='both',expand=True,padx=12,pady=12)
+    body.insert('1.0','\n\n'.join(v.get() if hasattr(v,'get') else str(v) for v in messages));body.configure(state='disabled')
+    ttk.Button(dialog,text='Got it',command=dialog.destroy).pack(pady=(0,12))
+
 
 def rows(tree,items):
     # Preserve selection while live values update.
     selection=tree.selection(); previous={tree.item(i,'values')[0] for i in selection}
     tree.delete(*tree.get_children())
-    for item in items:
-        iid=tree.insert('','end',values=item)
+    tree.tag_configure('alternate',background='#f6f9f7')
+    for index,item in enumerate(items):
+        iid=tree.insert('','end',values=item,tags=('alternate',) if index%2 else ())
         if str(item[0]) in previous: tree.selection_add(iid)
 
 class Dashboard:
@@ -75,52 +94,82 @@ class Dashboard:
 
     def build_live(self):
         tab=self.tab_live
-        ttk.Label(tab,text='Live download and upload',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Bytes, never bits. 1024-based units. Adapter totals include local network traffic.').pack(anchor='w',pady=5)
+        ttk.Label(tab,text='Live traffic',font=('Segoe UI',19,'bold')).pack(anchor='w')
+        ttk.Label(tab,text='Your connection, right now.',style='Muted.TLabel').pack(anchor='w',pady=(4,10))
         line=ttk.Frame(tab); line.pack(fill='x',pady=8)
         self.adapter=tk.StringVar(value='Auto (active adapter)')
-        self.adapter_box=ttk.Combobox(line,textvariable=self.adapter,state='readonly',width=35,values=['Auto (active adapter)'])
+        self.adapter_box=ttk.Combobox(line,textvariable=self.adapter,state='readonly',width=25,values=['Auto (active adapter)'])
         self.adapter_box.pack(side='left')
         self.live_status=tk.StringVar(value='Starting local adapter monitoring…')
         ttk.Label(tab,textvariable=self.live_status).pack(anchor='w')
         self.down=tk.StringVar(value='↓ 0.00 KB/s'); self.up=tk.StringVar(value='↑ 0.00 KB/s')
         ttk.Label(line,textvariable=self.down,font=('Segoe UI',18,'bold')).pack(side='left',padx=20)
         ttk.Label(line,textvariable=self.up,font=('Segoe UI',18,'bold')).pack(side='left')
-        self.graph=tk.Canvas(tab,height=150,bg='#102238',highlightthickness=0); self.graph.pack(fill='x',pady=6)
-        ttk.Label(tab,text='Recent speed: download blue · upload green · same scale').pack(anchor='w')
+        self.graph=tk.Canvas(tab,height=150,bg='#ffffff',highlightthickness=0); self.graph.pack(fill='x',pady=6)
+        ttk.Label(tab,text='Download / upload · last 90 samples',style='Muted.TLabel').pack(anchor='w',pady=(0,4))
         self.capture_status=tk.StringVar(value='Per-app monitoring initializes below.')
-        ttk.Label(tab,textvariable=self.capture_status,wraplength=950).pack(anchor='w',pady=8)
+        ttk.Button(tab,text='Tracking details',command=lambda:info_dialog(self.root,'About live traffic',self.capture_status,'Speeds use bytes per second (1024-based). Adapter totals include local traffic. App capture counts Internet TCP/UDP; a VPN may attribute traffic to its tunnel app.')).pack(anchor='e')
+        if os.name=='nt' and not admin():
+            ttk.Button(tab,text='Enable app tracking',command=self.app.enable_app_tracking).pack(anchor='w')
         self.apps=table(tab,('Application','Download /s','Upload /s','Observed total'),[450,150,150,150])
-        ttk.Label(tab,text='Apps: Internet TCP/UDP bytes, LAN excluded. Adapter totals include LAN. VPN traffic may belong to the tunnel app.').pack(anchor='w')
+
 
     def build_history(self):
         tab=self.tab_history
-        ttk.Label(tab,text='Usage history',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Choose a period to see your recorded usage.').pack(anchor='w',pady=5)
+        ttk.Label(tab,text='Usage',font=('Segoe UI',19,'bold')).pack(anchor='w')
+        ttk.Label(tab,text='See where your data goes.').pack(anchor='w',pady=5)
         line=ttk.Frame(tab); line.pack(fill='x')
         self.history_period=tk.StringVar(value='Last 30 days')
         for period in PERIODS:
-            ttk.Radiobutton(line,text=period,variable=self.history_period,value=period,command=self.refresh_history).pack(side='left',padx=4)
+            ttk.Radiobutton(line,style='Segment.TRadiobutton',text=period,variable=self.history_period,value=period,command=self.refresh_history).pack(side='left',padx=4)
         self.group=tk.StringVar(value='Wi-Fi / adapters')
         group_box=ttk.Combobox(line,textvariable=self.group,state='readonly',values=['Wi-Fi / adapters','Applications','Daily totals'],width=19)
         group_box.pack(side='left',padx=8)
         group_box.bind('<<ComboboxSelected>>',lambda _event:self.refresh_history())
-        ttk.Button(line,text='Export CSV',command=self.export_history).pack(side='right')
+        ttk.Button(line,text='Export',command=self.export_history).pack(side='right')
+        filter_line=ttk.Frame(tab);self.app_filters=filter_line
+        ttk.Label(filter_line,text='Show apps').pack(side='left',padx=(0,8))
+        self.history_minimum=tk.IntVar(value=self.app.desktop.data['usage_minimum_mb'])
+        for text,value in [('All',0),('1 MB+',1),('5 MB+',5)]:
+            ttk.Radiobutton(filter_line,text=text,variable=self.history_minimum,value=value,command=self.refresh_history).pack(side='left',padx=6)
+        ttk.Button(filter_line,text='App details',command=self.history_details).pack(side='right')
+        self.history_display=[];self.history_chart_rows=[]
         self.history_range=tk.StringVar()
-        ttk.Label(tab,textvariable=self.history_range).pack(anchor='w',pady=4)
+        self.history_range_label=ttk.Label(tab,textvariable=self.history_range,style='Muted.TLabel')
         line=ttk.Frame(tab);line.pack(fill='x',pady=5)
-        ttk.Label(line,text='Network filter').pack(side='left',padx=4)
+        ttk.Label(line,text='Network').pack(side='left',padx=4)
         self.history_network=tk.StringVar(value='All networks')
         self.history_network_box=ttk.Combobox(line,textvariable=self.history_network,values=['All networks'],state='readonly',width=35)
         self.history_network_box.pack(side='left')
         self.history_network_box.bind('<<ComboboxSelected>>',lambda _event:self.refresh_history())
-        ttk.Label(line,text='Choose a Wi-Fi to see its apps and daily usage.').pack(side='left',padx=10)
+        ttk.Button(line,text='About these numbers',command=lambda:info_dialog(self.root,'Usage details',self.history_range,self.history_status,self.history_precision)).pack(side='right')
         self.history_status=tk.StringVar(value='History starts with this installation.')
-        ttk.Label(tab,textvariable=self.history_status,wraplength=950).pack(anchor='w',pady=8)
-        self.history_table=table(tab,('Network / application / date','Downloaded','Uploaded','Total'),[480,150,150,150])
-        self.bars=tk.Canvas(tab,height=190,bg='#102238',highlightthickness=0); self.bars.pack(fill='x')
+        self.usage_down=tk.StringVar(value='—');self.usage_up=tk.StringVar(value='—');self.usage_coverage=tk.StringVar(value='—')
+        cards=ttk.Frame(tab);cards.pack(fill='x',pady=(8,6))
+        for col,(label,value) in enumerate([('↓ Downloaded',self.usage_down),('↑ Uploaded',self.usage_up),('Recorded',self.usage_coverage)]):
+            cards.columnconfigure(col,weight=1,uniform='summary')
+            card=ttk.Frame(cards,style='Card.TFrame',padding=(14,10));card.grid(row=0,column=col,sticky='nsew',padx=(0,8) if col<2 else 0)
+            ttk.Label(card,text=label,style='Card.TLabel',font=('Segoe UI',9)).pack(anchor='w')
+            ttk.Label(card,textvariable=value,style='Card.TLabel',font=('Segoe UI',17,'bold')).pack(anchor='w',pady=(4,0))
+        self.history_summary_cards=cards
+        self.history_body=ttk.Frame(tab);self.history_body.pack(fill='both',expand=True)
+        self.history_table=table(self.history_body,('Network / application / date','Downloaded','Uploaded','Total'),[480,150,150,150])
+        self.bars=tk.Canvas(self.history_body,height=150,bg='#ffffff',highlightthickness=0); self.bars.pack(side='bottom',fill='x',before=self.history_table.master)
+        self.history_empty=ttk.Frame(self.history_body,padding=28)
+        self.history_empty_title=tk.StringVar()
+        self.history_empty_message=tk.StringVar()
+        ttk.Label(self.history_empty,textvariable=self.history_empty_title,font=('Segoe UI',16,'bold')).pack(anchor='w',pady=(8,10))
+        ttk.Label(self.history_empty,textvariable=self.history_empty_message,wraplength=650).pack(anchor='w',pady=(0,16))
+        self.history_enable=ttk.Button(self.history_empty,text='Enable app tracking',command=self.app.enable_app_tracking)
+        ttk.Button(self.history_empty,text='See network totals',command=self.show_network_history).pack(anchor='w',pady=8)
         self.history_precision=tk.StringVar(value='Missing history is unknown, not zero usage.')
-        ttk.Label(tab,textvariable=self.history_precision,wraplength=1000).pack(anchor='w',pady=4)
+        self.history_footer=ttk.Label(tab,text='Only usage recorded while NetCroc is running appears here.',style='Muted.TLabel',wraplength=740)
+        self.history_footer.pack(side='bottom',fill='x',pady=4,before=self.history_body)
+        self.history_body.bind('<Configure>',self.resize_history)
+        self.bars.bind('<Configure>',lambda _event:self.draw_history_bars())
+
+    def show_network_history(self):
+        self.group.set('Wi-Fi / adapters');self.refresh_history()
 
     def period(self,period):
         self.history_period.set(period);self.refresh_history()
@@ -138,23 +187,86 @@ class Dashboard:
     def refresh_history(self):
         try:
             start,end,kind,group,network=self.history_args(); result=self.history.query(start,end,kind,group,network)
+            if kind=='app':self.app_filters.pack(fill='x',pady=4,before=self.history_summary_cards)
+            else:self.app_filters.pack_forget()
             self.history_range.set(f'{start:%d %b %Y %H:%M} → {end:%d %b %Y %H:%M}'+(' (end exclusive)' if self.history_period.get()=='Last month' else ' (now)'))
             self.history_precision.set(self.history.precision_note(start,end)+' Missing history is unknown, not zero usage.')
             networks=self.history.query(start,end,'adapter','network')
             self.history_network_box.configure(values=['All networks']+[name for name,_,_ in networks])
+            raw_result=result
+            minimum=self.history_minimum.get()*1024**2 if kind=='app' else 0
+            self.app.desktop.update({'usage_minimum_mb':self.history_minimum.get()})
+            if kind=='app':
+                self.history_display=aggregate(result,minimum)
+                result=[(v.label,v.down,v.up) for v in self.history_display]
+            else:self.history_display=[]
+            self.history_chart_rows=result
+            self.history_table.heading('Network / application / date',text='Application' if kind=='app' else 'Network / date')
             rows(self.history_table,[(n,volume(d),volume(u),volume(d+u)) for n,d,u in result])
             seconds=self.history.monitored(start,end)
-            total_down=sum(d for _,d,_ in result); total_up=sum(u for _,_,u in result)
+            total_down=sum(d for _,d,_ in raw_result); total_up=sum(u for _,_,u in raw_result)
+            self.usage_down.set(volume(total_down));self.usage_up.set(volume(total_up));self.usage_coverage.set(f'{seconds/3600:.1f} hours')
             self.history_status.set(f'Download {volume(total_down)} · Upload {volume(total_up)} · Monitoring coverage {seconds/3600:.2f} hours. '+
-                ('Per-app coverage also requires administrator capture.' if kind=='app' else 'Adapter totals include LAN. Combining virtual/physical adapters can double-count traffic.'))
-            if not result:self.history_status.set('No recorded data in this period. Missing history is unknown; per-app records require administrator capture.')
-            self.bars.delete('all'); width=max(600,self.bars.winfo_width()); maximum=max([d+u for _,d,u in result] or [1]) or 1
-            for index,(name,down,up) in enumerate(result[:6]):
-                y=12+index*28; length=(width-330)*(down+up)/maximum
-                self.bars.create_text(10,y+8,text=Path(name).name[:32],fill='white',anchor='w')
-                self.bars.create_rectangle(240,y,240+length,y+17,fill='#38bdf8',outline='')
-                self.bars.create_text(250+length,y+8,text=volume(down+up),fill='white',anchor='w')
+                (f'Showing {len(result)} app groups'+(f' of at least {self.history_minimum.get()} MB.' if minimum else '.') if kind=='app' else 'Adapter totals include LAN. Combining virtual/physical adapters can double-count traffic.'))
+            if not raw_result:self.history_status.set('No recorded data in this period.')
+            elif not result:self.history_status.set('Recorded usage exists, but no apps reach this filter. Choose All or a lower minimum.')
+            self.history_empty.pack_forget()
+            if result:
+                self.history_table.master.pack(fill='both',expand=True,pady=8)
+                self.bars.pack(side='bottom',fill='x',before=self.history_table.master)
+            else:
+                self.history_table.master.pack_forget();self.bars.pack_forget()
+                self.history_empty.pack(fill='both',expand=True)
+                if raw_result:
+                    self.history_empty_title.set('No apps match this minimum')
+                    self.history_empty_message.set('Choose All or 1 MB+ to see smaller usage. The filter does not delete or change any records.')
+                    self.history_enable.pack_forget()
+                elif kind=='app':
+                    self.history_empty_title.set('App usage has not been recorded yet')
+                    needs_admin=os.name=='nt' and not admin()
+                    self.history_empty_message.set('Windows approval is needed to track each app. Enable tracking to record usage from now on. Earlier app usage cannot be recovered.' if needs_admin else 'Only traffic captured while app tracking is active appears here. Check Live traffic for capture status. Earlier app usage cannot be recovered.')
+                    self.history_enable.configure(text='Enable app tracking' if needs_admin else 'Check app tracking',command=self.app.enable_app_tracking)
+                    self.history_enable.pack(anchor='w',before=self.history_empty.winfo_children()[-1])
+                else:
+                    self.history_empty_title.set('No saved usage for this period')
+                    self.history_empty_message.set('NetCroc records usage while it is running. Choose another period or leave it open to collect new data. Missing history is not zero usage.')
+                    self.history_enable.pack_forget()
+            self.draw_history_bars()
         except (ValueError,OSError) as error: messagebox.showerror('History',str(error))
+
+    def resize_history(self,event):
+        self.bars.configure(height=min(180,max(96,event.height//3)))
+
+    def draw_history_bars(self):
+        self.bars.delete('all');items=getattr(self,'history_chart_rows',[])[:6]
+        width=max(260,self.bars.winfo_width());height=max(80,self.bars.winfo_height())
+        label_width=min(230,max(100,int(width*.28)));maximum=max([d+u for _,d,u in items] or [1]) or 1
+        step=min(28,max(13,(height-14)//max(1,len(items))))
+        from tkinter import font
+        measure=font.Font(font=('Segoe UI',9))
+        for index,(name,down,up) in enumerate(items):
+            label=name
+            while label and measure.measure(label)>label_width-16:label=label[:-1]
+            if label!=name:label=label[:-1]+'…'
+            y=7+index*step;length=max(0,width-label_width-110)*(down+up)/maximum
+            self.bars.create_text(8,y+step/2,text=label,fill='#294638',anchor='w',font=('Segoe UI',9))
+            self.bars.create_rectangle(label_width,y+2,label_width+length,y+step-2,fill='#20a779',outline='')
+            self.bars.create_text(label_width+length+6,y+step/2,text=volume(down+up),fill='#294638',anchor='w',font=('Segoe UI',8))
+
+    def history_details(self):
+        selected=self.history_table.selection()
+        if not selected:return
+        index=self.history_table.index(selected[0])
+        if self.group.get()=='Applications' and index<len(self.history_display):
+            item=self.history_display[index];title=item.label;text='Recorded file locations / identities:\n\n'+'\n'.join(item.sources)
+            if item.label==UNKNOWN:text+='\n\nThese process identities were unavailable at capture time. Old PIDs are not reassigned to current apps.'
+        else:
+            title='Usage details';text=str(self.history_table.item(selected[0],'values')[0])
+        dialog=tk.Toplevel(self.root);dialog.title(title);dialog.geometry('720x320')
+        from tkinter.scrolledtext import ScrolledText
+        body=ScrolledText(dialog,wrap='word',font=('Segoe UI',10));body.pack(fill='both',expand=True,padx=12,pady=12)
+        body.insert('1.0',text);body.configure(state='disabled')
+        ttk.Button(dialog,text='Copy details',command=lambda:(self.root.clipboard_clear(),self.root.clipboard_append(text))).pack(pady=(0,12))
 
     def export_history(self):
         try:
@@ -413,8 +525,8 @@ class Dashboard:
                                         name=winreg.QueryValueEx(handle,'Name')[0]
                                     wifi_names[name]=profile
                                 except OSError:pass
-                    identities={p.pid:(p.info.get('exe') or p.info.get('name') or f'PID {p.pid}') for p in psutil.process_iter(['name','exe'],ad_value=None)}
-                identities={p.pid:(p.info.get('exe') or p.info.get('name') or f'PID {p.pid}') for p in psutil.process_iter(['name','exe'],ad_value=None)}
+                    identities={p.pid:(p.info.get('exe') or p.info.get('name') or UNKNOWN) for p in psutil.process_iter(['name','exe'],ad_value=None)}
+                identities={p.pid:(p.info.get('exe') or p.info.get('name') or UNKNOWN) for p in psutil.process_iter(['name','exe'],ad_value=None)}
                 elapsed,interfaces=rates.sample(psutil.net_io_counters(pernic=True,nowrap=False),now)
                 if elapsed>10:
                     if self.traffic:self.traffic.drain()
@@ -465,25 +577,29 @@ class Dashboard:
         down,up=interfaces.get(selected,(0,0,0,0))[:2]
         self.app.activity = (down+up, time.monotonic())
         self.down.set('↓ '+speed(down)); self.up.set('↑ '+speed(up))
+        if self.app.tray:self.app.tray.title=('NetCroc · ↓ '+speed(down)+' · ↑ '+speed(up))[:127]
         network=value['wifi'].get(selected,'')
         self.live_status.set(f"Adapter: {selected or 'not connected'}"+(f' · Wi-Fi: {network}' if network else ''))
         if hasattr(self.app, 'shell') and hasattr(self.app.shell, 'network'):
             self.app.shell.network.set(network or selected or 'No active connection')
         self.points.append((down,up)); self.draw_graph()
-        result=[]
+        total_rows=[];rate_rows=[]
         for (nic,name),(total_down,total_up) in value['totals'].items():
             if nic!=selected:continue
+            total_rows.append((name,total_down,total_up))
             down_bytes,up_bytes=value['apps'].get((nic,name),(0,0))
-            result.append((Path(name).name,speed(down_bytes/max(value['elapsed'],.001)),speed(up_bytes/max(value['elapsed'],.001)),volume(total_down+total_up),down_bytes+up_bytes))
-        result.sort(key=lambda r:r[-1],reverse=True)
-        rows(self.apps,[r[:-1] for r in result])
+            rate_rows.append((name,down_bytes/max(value['elapsed'],.001),up_bytes/max(value['elapsed'],.001)))
+        totals={v.key:v for v in aggregate(total_rows)}
+        rates=aggregate(rate_rows)
+        rows(self.apps,[(v.label,speed(v.down),speed(v.up),volume(totals[v.key].down+totals[v.key].up)) for v in rates])
+        self.overlay_snapshot={'network':network or selected or 'not connected','apps':[(v.label,v.down+v.up) for v in rates if v.down+v.up>0]}
 
     def draw_graph(self):
-        canvas=self.graph; canvas.delete('all'); width=max(canvas.winfo_width(),600); height=150
+        canvas=self.graph; canvas.delete('all'); width=max(canvas.winfo_width(),260); height=max(90,canvas.winfo_height())
         maximum=max([max(p) for p in self.points] or [1]) or 1
-        canvas.create_text(8,8,text=speed(maximum),fill='#cbd5e1',anchor='nw')
+        canvas.create_text(8,8,text=speed(maximum),fill='#60776a',anchor='nw')
         if len(self.points)<2:return
-        for axis,color in ((0,'#38bdf8'),(1,'#34d399')):
+        for axis,color in ((0,'#2589d8'),(1,'#18a778')):
             coords=[]
             for index,point in enumerate(self.points):coords.extend((index*(width-10)/89+5,height-10-point[axis]/maximum*(height-35)))
             canvas.create_line(*coords,fill=color,width=2)
@@ -507,8 +623,7 @@ class Dashboard:
                 self.dns_status.set('Test finished. Results include cached lookups and network variation. Nothing was changed.')
             elif kind=='wifi':
                 self.profiles=value
-                rows(self.wifi_table,[(p['profile'],'Connected' if p['connected'] else 'Saved',p['password'],p['auth'],p['interface'].description) for p in value])
-                self.wifi_status.set(f'{len(value)} saved profiles. If keys are protected, run as administrator locally.')
+                self.render_wifi()
             elif kind=='research':
                 rows(self.research_table,[(r['isp'],r['url'],f"{r['success']}/{r['attempts']}",f"{r['median_ms']:.1f} ms" if r['median_ms'] is not None else 'Unavailable') for r in value])
                 if not self.diagnostic:dns.atomic(self.folder/'url-study.json',{'results':value,'recommended_for_retest':research.recommendations(value)})
