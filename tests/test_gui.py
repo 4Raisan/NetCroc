@@ -20,19 +20,79 @@ class GuiTests(unittest.TestCase):
         shell=self.app.shell
         self.assertEqual(shell.book.select(),str(shell.primary['Home']))
         with patch('netcroc.ui.probe') as probe, patch.object(self.app.dashboard,'test_dns') as dns_test:
-            for name in shell.primary:
+            for name in shell.destinations:
                 shell.show(name); self.root.update_idletasks()
-                self.assertEqual(shell.book.select(),str(shell.primary[name]))
+                self.assertEqual(shell.book.select(),str(shell.destinations[name]))
             for name in shell.pages:
                 shell.open(name); self.root.update_idletasks()
                 self.assertEqual(shell.book.select(),str(shell.pages[name]))
-                primary=str(shell.pages[name]) in {str(p) for p in shell.primary.values()}
-                self.assertEqual(shell.back.winfo_manager(),'' if primary else 'pack')
+                selected=[n for n,b in shell.buttons.items() if b.instate(['selected'])]
+                self.assertEqual(len(selected),1)
+                self.assertEqual(str(shell.destinations[selected[0]]),shell.book.select())
             shell.show('Home'); self.root.update_idletasks()
-            self.assertEqual(shell.back.winfo_manager(),'')
+            self.assertEqual([n for n,b in shell.buttons.items() if b.instate(['selected'])],['Home'])
             probe.assert_not_called(); dns_test.assert_not_called()
+        self.assertEqual(list(shell.tools),['DNS','VPN','SSH / TLS','VLESS','Website tests'])
+        self.assertNotIn('Tools',[shell.book.tab(p,'text') for p in shell.book.tabs()])
         self.assertIsNone(self.app.dashboard.ssh_tab.session)
         self.assertIsNone(self.app.dashboard.vless_tab.session)
+
+    def test_sidebar_links_fit_the_minimum_window(self):
+        # Use one isolated Tk interpreter so other tests' destroyed roots cannot
+        # receive timer callbacks when the native window is mapped.
+        import subprocess
+        source=str(Path(__file__).resolve().parents[1]/'src')
+        script=f"""import sys, tkinter as tk
+sys.path.insert(0,{source!r})
+from netcroc.ui import App
+root=tk.Tk();app=App(root,diagnostic=True)
+try:
+    root.geometry('1000x720');root.deiconify();root.update()
+    tab=app.dashboard
+    tab.history.record([('app','test','chrome.exe',2*1024**2,0)],1)
+    tab.group.set('Applications');app.shell.show('Usage');root.update()
+    assert tab.bars.winfo_y()+tab.bars.winfo_height()<=tab.history_body.winfo_height()
+    assert tab.history_footer.winfo_y()+tab.history_footer.winfo_height()<=tab.tab_history.winfo_height()
+    assert root.overrideredirect()
+    app.window.maximize();root.update();assert app.window.maximized
+    app.window.maximize();root.update();assert not app.window.maximized
+    if sys.platform=='win32':
+        import ctypes
+        from netcroc.desktop import handle
+        gdi=ctypes.windll.gdi32;user=ctypes.windll.user32
+        gdi.CreateRectRgn.argtypes=[ctypes.c_int]*4;gdi.CreateRectRgn.restype=ctypes.c_void_p
+        gdi.PtInRegion.argtypes=[ctypes.c_void_p,ctypes.c_int,ctypes.c_int]
+        gdi.DeleteObject.argtypes=[ctypes.c_void_p]
+        user.GetWindowRgn.argtypes=[ctypes.c_void_p,ctypes.c_void_p]
+        region=gdi.CreateRectRgn(0,0,1,1)
+        try:
+            assert user.GetWindowRgn(handle(root),region)>0
+            assert not gdi.PtInRegion(region,0,0)
+            assert gdi.PtInRegion(region,50,50)
+        finally:gdi.DeleteObject(region)
+        surface=app.window.surface
+        assert int(surface.pack_info()['padx'])==1 and int(surface.pack_info()['pady'])==1
+        assert root.cget('background')=='#69bc2a'
+        region=gdi.CreateRectRgn(0,0,1,1)
+        try:
+            assert user.GetWindowRgn(surface.winfo_id(),region)>0
+            assert not gdi.PtInRegion(region,0,0)
+            assert gdi.PtInRegion(region,50,50)
+        finally:gdi.DeleteObject(region)
+        app.diagnostic=False;app.window.taskbar();app.diagnostic=True
+        app.window.minimize();root.update()
+        ctypes.windll.user32.IsIconic.argtypes=[ctypes.c_void_p]
+        assert ctypes.windll.user32.IsIconic(handle(root))
+        app.show();root.update();assert not ctypes.windll.user32.IsIconic(handle(root))
+    sidebar=app.shell.sidebar
+    for name,button in app.shell.buttons.items():
+        assert button.winfo_height()>1,name
+        assert button.winfo_y()+button.winfo_height()<=sidebar.winfo_height(),name
+        assert button.winfo_x()+button.winfo_width()<=sidebar.winfo_width(),name
+finally:app.quit()
+"""
+        result=subprocess.run([sys.executable,'-c',script],capture_output=True,text=True,timeout=45)
+        self.assertEqual(result.returncode,0,result.stderr)
 
     def test_home_toggle_uses_existing_start_and_pause(self):
         with patch.object(self.app,'start') as start:
@@ -42,6 +102,93 @@ class GuiTests(unittest.TestCase):
             self.app.shell.toggle_checks();pause.assert_called_once()
         self.app.running=False
 
+    def test_wifi_simple_columns_search_and_actions_keep_the_right_profile(self):
+        from types import SimpleNamespace
+        tab=self.app.dashboard
+        item=lambda name,connected:dict(profile=name,connected=connected,password='synthetic',auth='test',interface=SimpleNamespace(description='test'))
+        tab.events.put(('wifi',[item('Z network',True),item('A network',False)]));tab.poll()
+        self.assertEqual(tuple(tab.wifi_table['columns']),('Network','Status','Password'))
+        self.assertEqual(tab.visible_profiles[0]['profile'],'Z network')
+        tab.wifi_search.set('a network')
+        self.assertEqual(len(tab.wifi_table.get_children()),1)
+        tab.wifi_table.selection_set(tab.wifi_table.get_children()[0])
+        self.assertEqual(tab.selected_wifi()['profile'],'A network')
+        with patch('netcroc.dashboard.messagebox.showinfo') as details:tab.wifi_details()
+        self.assertIn('Security: test',details.call_args.args[1])
+
+    def test_empty_app_history_explains_missing_data_and_hides_the_blank_chart(self):
+        tab=self.app.dashboard
+        tab.group.set('Applications');tab.refresh_history()
+        self.assertEqual(tab.history_empty.winfo_manager(),'pack')
+        self.assertEqual(tab.bars.winfo_manager(),'')
+        self.assertIn('not been recorded',tab.history_empty_title.get())
+        tab.history.record([('adapter','test','',100,200)],1)
+        tab.show_network_history()
+        self.assertEqual(tab.history_empty.winfo_manager(),'')
+        self.assertEqual(len(tab.history_table.get_children()),1)
+        self.assertEqual(tab.bars.winfo_manager(),'pack')
+
+    def test_auto_isp_waits_before_starting_and_manual_override_wins(self):
+        self.app.isp.set('Airtel')
+        with patch('netcroc.ui.threading.Thread'),patch('netcroc.ui.probe') as probe:
+            self.app.start();probe.assert_not_called()
+        self.assertTrue(self.app.pending_start)
+        with patch.object(self.app,'start') as resume:
+            self.app.receive_isp(self.app.isp_serial,{'isp':'Hutch','provider':'Hutchison'},None)
+        self.assertEqual(self.app.isp.get(),'Hutch')
+        resume.assert_called_once_with(automatic=True,resolved=True)
+        old=self.app.isp_serial
+        self.app.isp.set('Dialog');self.app.manual_isp()
+        self.app.receive_isp(old,{'isp':'Hutch','provider':'Hutchison'},None)
+        self.assertEqual(self.app.isp.get(),'Dialog')
+        self.assertFalse(self.app.auto_isp.get())
+        self.app.auto_isp.set(True);self.app.change_isp_mode()
+        self.assertEqual(self.app.isp.get(),'Hutch')
+
+    def test_failed_isp_lookup_preserves_manual_target_and_can_still_start(self):
+        self.app.isp.set('Hutch');self.app.pending_start=True
+        with patch.object(self.app,'start') as start:
+            self.app.receive_isp(self.app.isp_serial,None,'TimeoutError')
+        self.assertEqual(self.app.isp.get(),'Hutch')
+        self.assertIn('Could not detect',self.app.isp_detection.get())
+        start.assert_called_once_with(automatic=True,resolved=True)
+
+    @unittest.skipUnless(os.name=='nt','Windows approval flow')
+    def test_declined_app_tracking_approval_keeps_the_app_running(self):
+        with patch('netcroc.platforms.admin',return_value=False),patch('ctypes.windll.shell32.ShellExecuteW',return_value=5),patch('netcroc.ui.messagebox.showinfo'),patch.object(self.app,'quit') as quit:
+            self.app.enable_app_tracking();quit.assert_not_called()
+
+    def test_usage_friendly_names_filters_and_responsive_chart(self):
+        tab=self.app.dashboard
+        tab.history.record([('app','test',r'C:\Program Files\Google\Chrome\chrome.exe',2*1024**2,0),
+                            ('app','test','Unresolved process (PID 1)',300,100),
+                            ('app','test','Unresolved process (PID 2)',300,100)],1)
+        tab.group.set('Applications');tab.refresh_history()
+        labels=[tab.history_table.item(i,'values')[0] for i in tab.history_table.get_children()]
+        self.assertEqual(labels,['Google Chrome','Unattributed traffic'])
+        tab.history_minimum.set(1);tab.refresh_history()
+        self.assertEqual(len(tab.history_table.get_children()),1)
+        tab.history_minimum.set(5);tab.refresh_history()
+        self.assertIn('No apps match',tab.history_empty_title.get())
+        tab.history_minimum.set(0);tab.refresh_history()
+        tab.bars.configure(width=400,height=100);self.root.update_idletasks();tab.draw_history_bars()
+        self.assertTrue(tab.bars.find_all())
+
+    def test_overlay_hovers_without_starting_a_network_or_guessing_country(self):
+        overlay=self.app.overlay
+        overlay.mode.set('Left edge');overlay.enabled.set(True)
+        self.root.after_cancel(overlay.timer)
+        with patch('netcroc.tray_mode.monitor_rect',return_value=(0,0,1920,1080)),patch.object(self.root,'winfo_pointerxy',return_value=(0,400)),patch.object(overlay.panel,'deiconify'),patch('netcroc.tray_mode.time.monotonic',return_value=100):
+            overlay.tick()
+        self.assertTrue(overlay.visible)
+        self.root.after_cancel(overlay.timer)
+        with patch('netcroc.tray_mode.monitor_rect',return_value=(0,0,1920,1080)),patch.object(self.root,'winfo_pointerxy',return_value=(1800,800)),patch('netcroc.tray_mode.time.monotonic',return_value=101):
+            overlay.tick()
+        self.assertFalse(overlay.visible)
+        overlay.signal={'active':True,'interfaces':['VPN']};overlay.update_text()
+        self.assertIn('not checked',overlay.vpn_text.get())
+        overlay.enabled.set(False)
+
     def test_vless_profile_screen_and_no_automatic_connection(self):
         tab=self.app.dashboard.vless_tab
         self.assertIsNone(tab.session)
@@ -49,13 +196,13 @@ class GuiTests(unittest.TestCase):
             with self.assertRaises(ValueError):tab.connect()
             session.assert_not_called()
         tab.edit()
-        window=next(w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel))
+        window=next(w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel) and not getattr(w,'netcroc_overlay',False))
         window.destroy()
     def test_ssh_tab_and_editor_have_all_configuration_pages(self):
         tab=self.app.dashboard.ssh_tab
-        self.assertEqual(list(self.app.shell.primary),['Home','Usage','Wi-Fi','Tools'])
+        self.assertEqual(list(self.app.shell.primary),['Home','Connection checks','Live traffic','Usage','Wi-Fi','Tray mode'])
         tab.edit()
-        windows=[w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel)]
+        windows=[w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel) and not getattr(w,'netcroc_overlay',False)]
         self.assertEqual(len(windows),1)
         books=[w for w in windows[0].winfo_children() if isinstance(w,__import__('tkinter').ttk.Notebook)]
         self.assertEqual(len(books[0].tabs()),4)
