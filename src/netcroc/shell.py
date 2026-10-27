@@ -48,7 +48,7 @@ class Shell:
         style.layout('Quiet.TNotebook.Tab', [])
         style.configure('Quiet.TNotebook', tabmargins=0, borderwidth=0)
         root.configure(background='#69bc2a')
-        surface = ttk.Frame(root); surface.pack(fill='both', expand=True, padx=1, pady=1)
+        surface = ttk.Frame(root); surface.pack(fill='both', expand=True, padx=2, pady=2)
         app.window.round_surface(surface)
         header = ttk.Frame(surface, padding=(24, 12))
         header.pack(fill='x')

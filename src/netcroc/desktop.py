@@ -133,13 +133,13 @@ class WindowChrome:
 
     def round_surface(self, surface):
         # Inset and round the content as well as the top-level window, leaving
-        # a consistent one-pixel coloured rim along the curved corners.
+        # a consistent two-pixel coloured rim along the curved corners.
         self.surface = surface
         self.surface_size = None
         def reshape(event):
             if event.widget is not surface: return
             size = (event.width, event.height)
-            if size != self.surface_size and self.set_round_region(surface.winfo_id(), *size, 22):
+            if size != self.surface_size and self.set_round_region(surface.winfo_id(), *size, 20):
                 self.surface_size = size
         surface.bind('<Configure>', reshape, add='+')
 
