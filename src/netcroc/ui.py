@@ -317,7 +317,7 @@ def main():
         app.toggle_details()
         root.update_idletasks()
         Path = __import__('pathlib').Path
-        Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps({'gui': 'passed', 'tabs': 9, 'isps': list(PRESETS), 'startup_changed': False, 'network_sent': False, 'capture_started': False, 'dns_changed': False, 'wifi_changed': False}), encoding='utf-8')
+        Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps({'gui': 'passed', 'tabs': len(app.dashboard.notebook.tabs()), 'main_destinations': list(app.shell.primary), 'isps': list(PRESETS), 'startup_changed': False, 'network_sent': False, 'capture_started': False, 'dns_changed': False, 'wifi_changed': False}), encoding='utf-8')
         app.quit()
         return
     try:
@@ -346,7 +346,7 @@ def posix_main(diagnostic):
         if diagnostic:
             root.update_idletasks()
             from pathlib import Path
-            Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps(dict(gui='passed',tabs=len(app.dashboard.notebook.tabs()),startup_changed=False,network_sent=False,capture_started=False,dns_changed=False,wifi_changed=False)),encoding='utf-8')
+            Path(sys.argv[sys.argv.index('--diagnostics')+1]).write_text(json.dumps(dict(gui='passed',tabs=len(app.dashboard.notebook.tabs()),main_destinations=list(app.shell.primary),startup_changed=False,network_sent=False,capture_started=False,dns_changed=False,wifi_changed=False)),encoding='utf-8')
             app.quit();return
         try:app.create_tray()
         except Exception:app.tray=None

@@ -27,7 +27,7 @@ class GuiTests(unittest.TestCase):
         window.destroy()
     def test_ssh_tab_and_editor_have_all_configuration_pages(self):
         tab=self.app.dashboard.ssh_tab
-        self.assertEqual(len(self.app.dashboard.notebook.tabs()),9)
+        self.assertEqual(list(self.app.shell.primary),['Home','Usage','Wi-Fi','Tools'])
         tab.edit()
         windows=[w for w in self.root.winfo_children() if isinstance(w,tk.Toplevel)]
         self.assertEqual(len(windows),1)

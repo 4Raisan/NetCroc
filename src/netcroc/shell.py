@@ -27,6 +27,7 @@ class Shell:
         style.configure('Muted.TLabel', foreground='#63776d')
         style.configure('Treeview', background='white', fieldbackground='white', rowheight=30, borderwidth=0)
         style.configure('Treeview.Heading', padding=8, background='#e7eeea')
+        style.layout('Quiet.TNotebook.Tab', [])
         style.configure('Quiet.TNotebook', tabmargins=0, borderwidth=0)
         root.configure(background='#f4f7f5')
         header = ttk.Frame(root, padding=(24, 16))
@@ -46,7 +47,32 @@ class Shell:
         self.book.bind('<<NotebookTabChanged>>', self.changed)
 
     def finish(self, dashboard, keepalive):
-        pass
+        self.dashboard = dashboard
+        self.pages = {self.book.tab(tab, 'text'): self.book.nametowidget(tab) for tab in self.book.tabs()}
+        home = ttk.Frame(self.book, padding=(20, 12)); self.book.add(home, text='Home')
+        tools = ttk.Frame(self.book, padding=(20, 12)); self.book.add(tools, text='Tools')
+        self.primary = {'Home': home, 'Usage': dashboard.tab_history, 'Wi-Fi': dashboard.tab_wifi, 'Tools': tools}
+        for name in self.primary:
+            button = ttk.Button(self.sidebar, text=name, style='Nav.TButton', command=lambda n=name: self.show(n))
+            button.pack(fill='x', pady=3); self.buttons[name] = button
+        ttk.Label(home, text='Your connection at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
+        ttk.Label(tools, text='Tools', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=12)
+        for title, page in self.pages.items():
+            if page not in self.primary.values():
+                ttk.Button(tools, text=title, command=lambda n=title: self.open(n)).pack(anchor='w', pady=4)
+        self.show('Home')
+
+    def show(self, name):
+        self.book.select(self.primary[name])
+        self.changed()
+        if name=='Usage': self.dashboard.refresh_history()
+
+    def open(self, name):
+        self.book.select(self.pages[name])
+        self.changed()
 
     def changed(self, _event=None):
-        pass
+        if not self.primary: return
+        selected=self.book.select()
+        for name, button in self.buttons.items():
+            button.state(['selected'] if str(self.primary[name])==selected else ['!selected'])
