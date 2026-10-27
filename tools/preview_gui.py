@@ -28,9 +28,9 @@ def main():
     dashboard.points.extend(((6+2*math.sin(i/5))*1024**2,(1+.5*math.cos(i/9))*1024**2) for i in range(90))
     dashboard.capture_status.set('SYNTHETIC PREVIEW: sample app data, not a measured capture.')
     dashboard.refresh_history()
-    book=next(child for child in root.winfo_children() if isinstance(child,ttk.Notebook))
+    book=app.shell.book
     try:
-        for index,name in ((1,'live'),(2,'history'),(3,'dns'),(0,'keepalive'),(6,'vpn'),(7,'ssh-tls'),(8,'vless')):
+        for index,name in ((9,'home'),(10,'tools'),(1,'live'),(2,'history'),(3,'dns'),(0,'keepalive'),(6,'vpn'),(7,'ssh-tls'),(8,'vless')):
             book.select(index);root.deiconify();root.update();dashboard.draw_graph();root.update()
             time.sleep(.35)
             user=ctypes.windll.user32

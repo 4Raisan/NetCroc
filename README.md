@@ -12,6 +12,12 @@
 
 A desktop app for Windows, macOS and Linux for checking connections, watching download/upload speeds, tracking usage, managing saved Wi-Fi and connecting through your own VPN or tunnel profiles.
 
+## Simple everyday controls
+
+The updated interface has four destinations: **Home**, **Usage**, **Wi-Fi** and **Tools**. Home shows live download/upload speeds and one Start/Pause control for optional connection checks. Usage keeps the three requested periods. DNS, VPN, SSH/TLS, VLESS and website tests remain available under Tools, with a Back button. Opening a tool does not connect a tunnel or change network settings.
+
+The [beta 3 release](https://github.com/4Raisan/NetCroc/releases/tag/v0.4.0-beta.3) includes this simplified interface. The normal app reads real adapter speeds and saved usage history; synthetic data is limited to explicitly labelled development previews.
+
 ## What you can do
 
 | Area | Features |

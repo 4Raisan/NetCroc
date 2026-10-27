@@ -1,4 +1,4 @@
-# NetCroc cross-platform beta
+# NetCroc v0.4.0-beta.3 — simpler everyday controls
 
 Runnable desktop packages for Windows x64, Linux x64 (glibc 2.35+), macOS Apple Silicon and macOS Intel. Each asset is built on its native platform and must pass automated tests, bundled-source verification and read-only frozen GUI/helper checks before publication.
 
@@ -14,6 +14,17 @@ Runnable desktop packages for Windows x64, Linux x64 (glibc 2.35+), macOS Apple 
 Only runnable EXE/app/binary packages are uploaded. GitHub's automatic source links remain part of GitHub Releases.
 
 Intel macOS pins cryptography 48.0.1 to its universal2 wheel. CI refuses source-only cryptography installs to avoid mixing host OpenSSL libraries into the frozen app. Other platforms retain their compatible provider dependency resolution.
+
+## Beta 3 interface improvements
+
+- Four main destinations: Home, Usage, Wi-Fi and Tools.
+- Home shows real live download/upload rates and the active network, with one Start/Pause control for connection checks.
+- Existing recorded history is retained; usage filters update immediately when selected.
+- DNS, VPN, SSH/TLS, VLESS and website tests remain available under Tools with Back navigation. Opening a tool does not connect or change network settings.
+- Final crocodile logo included in the window, tray and packaged application.
+- Updated GUI tests and packaged startup checks. The local Windows suite completed 157 tests with five platform-specific skips; native release checks run separately on all four package targets.
+
+The Windows app was opened with real adapter traffic, saved usage and successful HTTP checks. The earlier 24-awake-hour observation ended early when switching versions; a new observation is running and is not yet a completed stability result.
 
 ## Beta 2 recovery improvements
 
