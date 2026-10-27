@@ -228,22 +228,44 @@ class Dashboard:
 
     def build_wifi(self):
         tab=self.tab_wifi
-        ttk.Label(tab,text='Saved Wi-Fi',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Saved passwords display locally where Windows allows it. Passwords are never written to history.',wraplength=950).pack(anchor='w',pady=6)
-        self.wifi_status=tk.StringVar(value='Loading saved profiles…')
-        ttk.Label(tab,textvariable=self.wifi_status).pack(anchor='w')
-        self.wifi_table=table(tab,('Saved profile','State','Password','Security','Adapter'),[230,100,290,110,220])
-        line=ttk.Frame(tab); line.pack(fill='x')
-        ttk.Button(line,text='Refresh profiles',command=self.refresh_wifi).pack(side='left')
-        if os.name!='nt':ttk.Button(line,text='Reveal selected password',command=self.reveal_wifi).pack(side='left',padx=6)
-        ttk.Button(line,text='Connect selected',command=lambda:self.wifi_action('connect')).pack(side='left',padx=6)
-        ttk.Button(line,text='Forget selected',command=lambda:self.wifi_action('forget')).pack(side='left')
-        ttk.Label(tab,text='Connect asks before switching networks. Forget is blocked for the connected profile.\nWi-Fi usage: Usage → Last 30 days, Last month or This month → Wi-Fi / adapters.',wraplength=950).pack(anchor='w',pady=12)
+        ttk.Label(tab,text='Wi-Fi',font=('Segoe UI',19,'bold')).pack(anchor='w')
+        ttk.Label(tab,text='Your saved networks and passwords.').pack(anchor='w',pady=6)
+        self.wifi_status=tk.StringVar(value='Loading saved networks…')
+        ttk.Label(tab,textvariable=self.wifi_status,wraplength=750).pack(anchor='w',pady=6)
+        self.wifi_search=tk.StringVar()
+        search=ttk.Frame(tab);search.pack(fill='x',pady=5)
+        ttk.Label(search,text='Find a network').pack(side='left',padx=(0,8))
+        ttk.Entry(search,textvariable=self.wifi_search).pack(side='left',fill='x',expand=True)
+        self.wifi_search.trace_add('write',lambda *_:self.render_wifi())
+        self.visible_profiles=[]
+        self.wifi_table=table(tab,('Network','Status','Password'),[390,120,280])
+        line=ttk.Frame(tab);line.pack(fill='x')
+        ttk.Button(line,text='Connect',command=lambda:self.wifi_action('connect')).pack(side='left')
+        ttk.Button(line,text='Refresh',command=self.refresh_wifi).pack(side='left',padx=6)
+        if os.name!='nt':ttk.Button(line,text='Show password',command=self.reveal_wifi).pack(side='left',padx=6)
+        ttk.Button(line,text='Details',command=self.wifi_details).pack(side='right')
+        ttk.Button(line,text='Forget',command=lambda:self.wifi_action('forget')).pack(side='right',padx=6)
+        ttk.Label(tab,text='Select a network to connect. Your current connection is protected from Forget.',wraplength=750).pack(anchor='w',pady=10)
+
+    def render_wifi(self):
+        search=self.wifi_search.get().strip().casefold()
+        self.visible_profiles=sorted((p for p in self.profiles if search in p['profile'].casefold()),key=lambda p:(not p['connected'],p['profile'].casefold()))
+        rows(self.wifi_table,[(p['profile'],'Connected' if p['connected'] else 'Saved',p['password']) for p in self.visible_profiles])
+        connected=next((p['profile'] for p in self.profiles if p['connected']),None)
+        self.wifi_status.set(('Connected to '+connected+' · ' if connected else '')+f'{len(self.visible_profiles)} saved networks'+(' shown' if search else ''))
+
+    def selected_wifi(self):
+        selected=self.wifi_table.selection()
+        return self.visible_profiles[self.wifi_table.index(selected[0])] if selected else None
+
+    def wifi_details(self):
+        item=self.selected_wifi()
+        if item:
+            messagebox.showinfo('Network details','Network: '+item['profile']+'\nSecurity: '+str(item['auth'])+'\nAdapter: '+str(item['interface'].description))
 
     def reveal_wifi(self):
-        selected=self.wifi_table.selection()
-        if not selected:return
-        item=self.profiles[self.wifi_table.index(selected[0])]
+        item=self.selected_wifi()
+        if not item:return
         wifi=Wifi()
         try:messagebox.showinfo('Saved Wi-Fi password',wifi.password(item))
         except OSError:messagebox.showerror('Saved Wi-Fi password','The OS denied password access or no stored password was found.')
@@ -259,9 +281,8 @@ class Dashboard:
         else:self.task('wifi',work)
 
     def wifi_action(self,action):
-        selected=self.wifi_table.selection()
-        if not selected:return
-        index=self.wifi_table.index(selected[0]); item=self.profiles[index]
+        item=self.selected_wifi()
+        if not item:return
         if not messagebox.askyesno('Wi-Fi',f"{action.title()} profile {item['profile']}?"+ ('\nThis may disconnect your current connection.' if action=='connect' else '')):return
         def work():
             wifi=Wifi()
