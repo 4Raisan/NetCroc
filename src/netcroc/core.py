@@ -10,9 +10,11 @@ from urllib.parse import urlsplit
 
 PRESETS = {'Dialog': 'https://www.dialog.lk/robots.txt', 'SLT': 'https://www.slt.lk/robots.txt', 'Mobitel': 'https://www.mobitel.lk/robots.txt',
            'Hutch': 'https://hutch.lk/robots.txt', 'Airtel': 'https://www.airtel.lk/robots.txt'}
-DEFAULTS = dict(isp='Hutch', custom='', interval=1, protocol='HTTP', details=False, startup=False, smart=False)
+DEFAULTS = dict(isp='Hutch', custom='', interval=1, protocol='HTTP', details=False, startup=False, smart=False, auto_isp=True)
 
 def validate(settings):
+    if not isinstance(settings.get('auto_isp', True), bool):
+        raise ValueError('Automatic ISP detection must be on or off.')
     if settings['isp'] not in PRESETS or settings['interval'] not in (1, 5, 10, 15, 30):
         raise ValueError('Choose an ISP and an available interval.')
     if settings['protocol'] not in ('HTTP', 'ICMP'):
