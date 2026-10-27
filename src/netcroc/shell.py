@@ -56,10 +56,22 @@ class Shell:
             button = ttk.Button(self.sidebar, text=name, style='Nav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=3); self.buttons[name] = button
         ttk.Label(home, text='Your connection at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
-        ttk.Label(tools, text='Tools', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=12)
-        for title, page in self.pages.items():
-            if page not in self.primary.values():
-                ttk.Button(tools, text=title, command=lambda n=title: self.open(n)).pack(anchor='w', pady=4)
+        ttk.Label(tools, text='Tools', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
+        ttk.Label(tools, text='Choose a tool when you need it.', style='Muted.TLabel').pack(anchor='w', pady=(0, 20))
+        grid = ttk.Frame(tools); grid.pack(fill='x')
+        choices = [('Connection checks', 'ISP, interval and optional keep-alive.', 'Keep-alive'),
+                   ('DNS', 'Test lookup times or restore your settings.', 'DNS'),
+                   ('VPN', 'Import and connect a WireGuard profile.', 'VPN'),
+                   ('Live traffic', 'View per-app speed and the live graph.', 'Live traffic'),
+                   ('SSH / TLS', 'Advanced · your own tunnel account.', 'SSH / TLS'),
+                   ('VLESS', 'Advanced · your own server profile.', 'VLESS'),
+                   ('Website tests', 'Advanced · compare ISP targets.', 'URL study')]
+        for index, (title, detail, page) in enumerate(choices):
+            col=index%2; grid.columnconfigure(col, weight=1, uniform='tools')
+            tile=ttk.Frame(grid, style='Card.TFrame', padding=14)
+            tile.grid(row=index//2, column=col, sticky='nsew', padx=(0, 8) if col==0 else (8, 0), pady=(0, 12))
+            ttk.Button(tile, text=title+'  →', command=lambda p=page: self.open(p)).pack(anchor='w')
+            ttk.Label(tile, text=detail, style='Card.TLabel', wraplength=270).pack(anchor='w', pady=(8, 0))
         self.show('Home')
 
     def show(self, name):
@@ -74,5 +86,8 @@ class Shell:
     def changed(self, _event=None):
         if not self.primary: return
         selected=self.book.select()
+        primary=next((n for n,p in self.primary.items() if str(p)==selected), None)
         for name, button in self.buttons.items():
-            button.state(['selected'] if str(self.primary[name])==selected else ['!selected'])
+            button.state(['selected'] if name==(primary or 'Tools') else ['!selected'])
+        if primary: self.back.pack_forget()
+        else: self.back.pack(anchor='w', pady=(0, 6), before=self.book)
