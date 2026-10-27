@@ -444,6 +444,8 @@ class Dashboard:
         self.down.set('↓ '+speed(down)); self.up.set('↑ '+speed(up))
         network=value['wifi'].get(selected,'')
         self.live_status.set(f"Adapter: {selected or 'not connected'}"+(f' · Wi-Fi: {network}' if network else ''))
+        if hasattr(self.app, 'shell') and hasattr(self.app.shell, 'network'):
+            self.app.shell.network.set(network or selected or 'No active connection')
         self.points.append((down,up)); self.draw_graph()
         result=[]
         for (nic,name),(total_down,total_up) in value['totals'].items():

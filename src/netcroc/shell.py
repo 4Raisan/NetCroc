@@ -56,6 +56,8 @@ class Shell:
             button = ttk.Button(self.sidebar, text=name, style='Nav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=3); self.buttons[name] = button
         ttk.Label(home, text='Your connection at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
+        self.network = tk.StringVar(value='Waiting for connection data…')
+        ttk.Label(home, textvariable=self.network, style='Muted.TLabel').pack(anchor='w', pady=(0, 22))
         rates = ttk.Frame(home); rates.pack(fill='x')
         for column, (label, value) in enumerate((('Download', dashboard.down), ('Upload', dashboard.up))):
             rates.columnconfigure(column, weight=1, uniform='rates')
