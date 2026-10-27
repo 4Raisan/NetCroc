@@ -16,6 +16,32 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.ui import App
 
 class GuiTests(unittest.TestCase):
+    def test_simple_navigation_preserves_tools_without_starting_network(self):
+        shell=self.app.shell
+        self.assertEqual(shell.book.select(),str(shell.primary['Home']))
+        with patch('netcroc.ui.probe') as probe, patch.object(self.app.dashboard,'test_dns') as dns_test:
+            for name in shell.primary:
+                shell.show(name); self.root.update_idletasks()
+                self.assertEqual(shell.book.select(),str(shell.primary[name]))
+            for name in shell.pages:
+                shell.open(name); self.root.update_idletasks()
+                self.assertEqual(shell.book.select(),str(shell.pages[name]))
+                primary=str(shell.pages[name]) in {str(p) for p in shell.primary.values()}
+                self.assertEqual(shell.back.winfo_manager(),'' if primary else 'pack')
+            shell.show('Home'); self.root.update_idletasks()
+            self.assertEqual(shell.back.winfo_manager(),'')
+            probe.assert_not_called(); dns_test.assert_not_called()
+        self.assertIsNone(self.app.dashboard.ssh_tab.session)
+        self.assertIsNone(self.app.dashboard.vless_tab.session)
+
+    def test_home_toggle_uses_existing_start_and_pause(self):
+        with patch.object(self.app,'start') as start:
+            self.app.shell.toggle_checks();start.assert_called_once()
+        self.app.running=True
+        with patch.object(self.app,'pause') as pause:
+            self.app.shell.toggle_checks();pause.assert_called_once()
+        self.app.running=False
+
     def test_vless_profile_screen_and_no_automatic_connection(self):
         tab=self.app.dashboard.vless_tab
         self.assertIsNone(tab.session)
