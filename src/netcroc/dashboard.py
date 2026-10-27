@@ -48,13 +48,29 @@ def info_dialog(root,title,*messages):
 
 
 def rows(tree,items):
-    # Preserve selection while live values update.
-    selection=tree.selection(); previous={tree.item(i,'values')[0] for i in selection}
-    tree.delete(*tree.get_children())
-    tree.tag_configure('alternate',background='#f6f9f7')
+    # Reuse existing rows so live refreshes do not flicker or discard selection.
+    snapshot=tuple(tuple(map(str,item)) for item in items)
+    if snapshot == getattr(tree,'_netcroc_rows_cache',None):return
+    tree._netcroc_rows_cache=snapshot
+    existing=tree.get_children(); buckets=defaultdict(deque)
+    for iid in existing:
+        values=tree.item(iid,'values')
+        if values:buckets[str(values[0])].append(iid)
+    if not getattr(tree,'_netcroc_stripes',False):
+        tree.tag_configure('alternate',background='#f6f9f7');tree._netcroc_stripes=True
+    used=set()
     for index,item in enumerate(items):
-        iid=tree.insert('','end',values=item,tags=('alternate',) if index%2 else ())
-        if str(item[0]) in previous: tree.selection_add(iid)
+        key=str(item[0]);iid=buckets[key].popleft() if buckets[key] else None
+        tags=('alternate',) if index%2 else ()
+        if iid is None:iid=tree.insert('','end',values=item,tags=tags)
+        else:
+            if tuple(map(str,tree.item(iid,'values'))) != tuple(map(str,item)) or tuple(tree.item(iid,'tags')) != tags:
+                tree.item(iid,values=item,tags=tags)
+            if tree.index(iid)!=index:tree.move(iid,'',index)
+        used.add(iid)
+    for iid in existing:
+        if iid not in used:tree.delete(iid)
+
 
 class Dashboard:
     def __init__(self,app,notebook,diagnostic=False):
