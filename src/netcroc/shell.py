@@ -5,6 +5,12 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 
+
+def logo_path():
+    base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parents[2]))
+    return base / 'assets' / 'netcroc.png'
+
+
 class Shell:
     def __init__(self, root, app):
         self.app = app
@@ -32,7 +38,14 @@ class Shell:
         root.configure(background='#f4f7f5')
         header = ttk.Frame(root, padding=(24, 16))
         header.pack(fill='x')
-        self.logo = None
+        try:
+            with Image.open(logo_path()) as source:
+                image = source.convert('RGBA'); image.thumbnail((54, 54), Image.Resampling.LANCZOS)
+            self.logo = ImageTk.PhotoImage(image, master=root)
+            ttk.Label(header, image=self.logo).pack(side='left', padx=(0, 12))
+            root.iconphoto(True, self.logo)
+        except OSError:
+            self.logo = None
         brand = ttk.Frame(header); brand.pack(side='left')
         ttk.Label(brand, text='NetCroc', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
         ttk.Label(brand, text='Your quiet network companion.', style='Muted.TLabel').pack(anchor='w')
@@ -66,7 +79,6 @@ class Shell:
             ttk.Label(card, text=label, style='Card.TLabel').pack(anchor='w')
             ttk.Label(card, textvariable=value, style='Card.TLabel', font=('Segoe UI', 25, 'bold')).pack(anchor='w', pady=(8, 4))
         ttk.Button(home, text='See apps and live graph  →', command=lambda: self.open('Live traffic')).pack(anchor='w', pady=(12, 24))
-        ttk.Label(home, text='Monitoring stays local. Speeds are shown in bytes per second.', style='Muted.TLabel', wraplength=650).pack(anchor='w', pady=22)
         card = ttk.Frame(home, style='Card.TFrame', padding=22); card.pack(fill='x')
         row = ttk.Frame(card, style='Card.TFrame'); row.pack(fill='x')
         ttk.Label(row, text='Keep connection active', style='Card.TLabel', font=('Segoe UI', 14, 'bold')).pack(side='left')
@@ -75,6 +87,7 @@ class Shell:
         ttk.Label(card, text='Optional checks may help with idle stalls.', style='Card.TLabel').pack(anchor='w', pady=(8, 4))
         ttk.Label(card, textvariable=self.app.status, style='Card.TLabel', wraplength=640).pack(anchor='w')
         ttk.Button(card, text='Connection settings', command=lambda: self.open('Keep-alive')).pack(anchor='w', pady=(12, 0))
+        ttk.Label(home, text='Monitoring stays local. Speeds are shown in bytes per second.', style='Muted.TLabel', wraplength=650).pack(anchor='w', pady=22)
         ttk.Label(tools, text='Tools', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
         ttk.Label(tools, text='Choose a tool when you need it.', style='Muted.TLabel').pack(anchor='w', pady=(0, 20))
         grid = ttk.Frame(tools); grid.pack(fill='x')

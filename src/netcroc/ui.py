@@ -12,6 +12,14 @@ import pystray
 from .core import DEFAULTS, PRESETS, Settings, validate, probe, set_startup, smart_interval, run_comparison, comparison_verdict, time
 
 def icon_image(color='#38bdf8'):
+    from .shell import logo_path
+    try:
+        with Image.open(logo_path()) as source:
+            image = source.convert('RGBA').resize((64, 64), Image.Resampling.LANCZOS)
+        ImageDraw.Draw(image).ellipse((49, 49, 63, 63), fill=color, outline='white', width=2)
+        return image
+    except OSError:
+        pass
     image = Image.new('RGBA', (64, 64))
     draw = ImageDraw.Draw(image)
     draw.rounded_rectangle((2, 2, 62, 62), radius=16, fill='#142338')
