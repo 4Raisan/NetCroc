@@ -23,6 +23,8 @@ def main():
              '--distpath',str(work/'dist'),'--workpath',str(work/'work'),'--specpath',str(work)]
         cmd+=['--onedir','--windowed'] if system=='darwin' else ['--onefile']+(['--windowed'] if system=='windows' else [])
         cmd+=['--add-data',str(ROOT/'assets/netcroc.png')+os.pathsep+'assets']
+        # Pillow imports its Tk interpreter finder dynamically on Linux.
+        if system=='linux':cmd+=['--hidden-import','PIL._tkinter_finder']
         if system=='windows':cmd+=['--icon',str(ROOT/'assets/netcroc.ico')]
         for dep in ('paramiko','cryptography','bcrypt','PyNaCl','cffi'):cmd+=['--copy-metadata',dep]
         if system!='windows':cmd+=['--copy-metadata','keyring','--collect-submodules','keyring.backends']
