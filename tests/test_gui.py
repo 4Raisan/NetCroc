@@ -16,6 +16,26 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.ui import App
 
 class GuiTests(unittest.TestCase):
+    def test_setup_dialog_checks_without_installing(self):
+        with patch('netcroc.setup_ui.inspect',return_value=[('Core application',True,'Ready')]), \
+             patch.object(self.app.dashboard.ssh_tab.routing,'install') as install:
+            self.app.shell.open_setup()
+            self.assertTrue(self.app.setup_dialog.winfo_exists())
+            install.assert_not_called()
+            self.app.setup_dialog.destroy()
+
+    def test_live_rows_keep_selection_when_values_and_order_change(self):
+        from netcroc.dashboard import rows
+        tree=self.app.dashboard.apps
+        rows(tree,[('Browser','1 KB/s','2 KB/s','4 KB'),('Updater','2 KB/s','1 KB/s','3 KB')])
+        selected=tree.get_children()[0];tree.selection_set(selected)
+        rows(tree,[('Updater','3 KB/s','1 KB/s','4 KB'),('Browser','2 KB/s','2 KB/s','5 KB')])
+        self.assertEqual(tree.selection(),(selected,))
+        self.assertEqual(tree.item(selected,'values')[0],'Browser')
+        self.assertEqual(tree.index(selected),1)
+        before=tree.get_children();rows(tree,[('Updater','3 KB/s','1 KB/s','4 KB'),('Browser','2 KB/s','2 KB/s','5 KB')])
+        self.assertEqual(tree.get_children(),before)
+
     def test_simple_navigation_preserves_tools_without_starting_network(self):
         shell=self.app.shell
         self.assertEqual(shell.book.select(),str(shell.primary['Home']))
@@ -71,7 +91,7 @@ try:
             assert gdi.PtInRegion(region,50,50)
         finally:gdi.DeleteObject(region)
         surface=app.window.surface
-        assert int(surface.pack_info()['padx'])==1 and int(surface.pack_info()['pady'])==1
+        assert int(surface.pack_info()['padx'])==2 and int(surface.pack_info()['pady'])==2
         assert root.cget('background')=='#69bc2a'
         region=gdi.CreateRectRgn(0,0,1,1)
         try:
@@ -144,6 +164,38 @@ finally:app.quit()
         self.assertFalse(self.app.auto_isp.get())
         self.app.auto_isp.set(True);self.app.change_isp_mode()
         self.assertEqual(self.app.isp.get(),'Hutch')
+
+    def test_wifi_change_invalidates_old_lookup_and_detects_only_in_auto_mode(self):
+        app=self.app
+        app.isp.set('Airtel');app.auto_isp.set(True)
+        with patch('netcroc.ui.threading.Thread'):
+            app.detect_isp(); old=app.isp_serial
+            app.observe_wifi({'Wi-Fi':'First'})
+            app.observe_wifi({'Wi-Fi':'Second'})
+            app.receive_isp(old,{'isp':'Hutch','provider':'Hutchison'},None)
+            self.assertNotEqual(app.isp.get(),'Hutch')
+            self.root.after_cancel(app.isp_wifi_timer);app.isp_wifi_timer=None
+            app.detect_isp()
+            app.receive_isp(app.isp_serial,{'isp':'Dialog','provider':'Dialog'},None)
+            self.assertEqual(app.isp.get(),'Dialog')
+            app.manual_isp(); serial=app.isp_serial
+            app.observe_wifi({'Wi-Fi':'Third'})
+            self.assertEqual(app.isp_serial,serial)
+            self.assertEqual(app.isp.get(),'Dialog')
+
+    def test_new_wifi_schedules_detection_and_failed_lookup_retries(self):
+        app=self.app; app.auto_isp.set(True)
+        scheduled=[]
+        with patch.object(self.root,'after',side_effect=lambda delay,fn: scheduled.append((delay,fn)) or 'timer'), \
+             patch('netcroc.ui.threading.Thread') as worker:
+            app.observe_wifi({'Wi-Fi':'New network'})
+            self.assertEqual(scheduled[-1][0],2000)
+            scheduled.pop()[1]()
+            worker.assert_called_once()
+            app.receive_isp(app.isp_serial,None,'TimeoutError')
+            self.assertEqual(scheduled[-1][0],30000)
+            scheduled.pop()[1]()
+            self.assertEqual(worker.call_count,2)
 
     def test_failed_isp_lookup_preserves_manual_target_and_can_still_start(self):
         self.app.isp.set('Hutch');self.app.pending_start=True
