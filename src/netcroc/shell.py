@@ -67,6 +67,14 @@ class Shell:
             ttk.Label(card, textvariable=value, style='Card.TLabel', font=('Segoe UI', 25, 'bold')).pack(anchor='w', pady=(8, 4))
         ttk.Button(home, text='See apps and live graph  →', command=lambda: self.open('Live traffic')).pack(anchor='w', pady=(12, 24))
         ttk.Label(home, text='Monitoring stays local. Speeds are shown in bytes per second.', style='Muted.TLabel', wraplength=650).pack(anchor='w', pady=22)
+        card = ttk.Frame(home, style='Card.TFrame', padding=22); card.pack(fill='x')
+        row = ttk.Frame(card, style='Card.TFrame'); row.pack(fill='x')
+        ttk.Label(row, text='Keep connection active', style='Card.TLabel', font=('Segoe UI', 14, 'bold')).pack(side='left')
+        self.toggle = ttk.Button(row, text='Start', style='Primary.TButton', command=self.toggle_checks)
+        self.toggle.pack(side='right')
+        ttk.Label(card, text='Optional checks may help with idle stalls.', style='Card.TLabel').pack(anchor='w', pady=(8, 4))
+        ttk.Label(card, textvariable=self.app.status, style='Card.TLabel', wraplength=640).pack(anchor='w')
+        ttk.Button(card, text='Connection settings', command=lambda: self.open('Keep-alive')).pack(anchor='w', pady=(12, 0))
         ttk.Label(tools, text='Tools', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
         ttk.Label(tools, text='Choose a tool when you need it.', style='Muted.TLabel').pack(anchor='w', pady=(0, 20))
         grid = ttk.Frame(tools); grid.pack(fill='x')
@@ -83,7 +91,17 @@ class Shell:
             tile.grid(row=index//2, column=col, sticky='nsew', padx=(0, 8) if col==0 else (8, 0), pady=(0, 12))
             ttk.Button(tile, text=title+'  →', command=lambda p=page: self.open(p)).pack(anchor='w')
             ttk.Label(tile, text=detail, style='Card.TLabel', wraplength=270).pack(anchor='w', pady=(8, 0))
+        self.app.status.trace_add('write', lambda *_: self.update_toggle())
         self.show('Home')
+
+    def toggle_checks(self):
+        if self.app.running: self.app.pause()
+        else: self.app.start()
+        self.update_toggle()
+
+    def update_toggle(self):
+        self.toggle.configure(text='Pause' if self.app.running else 'Start',
+                              state='disabled' if self.app.comparing else 'normal')
 
     def show(self, name):
         self.book.select(self.primary[name])
