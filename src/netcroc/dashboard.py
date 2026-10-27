@@ -96,14 +96,15 @@ class Dashboard:
     def build_history(self):
         tab=self.tab_history
         ttk.Label(tab,text='Usage history',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Last 30 days, Last month or This month. Keeps 62 days to cover two full 31-day months.').pack(anchor='w',pady=5)
+        ttk.Label(tab,text='Choose a period to see your recorded usage.').pack(anchor='w',pady=5)
         line=ttk.Frame(tab); line.pack(fill='x')
         self.history_period=tk.StringVar(value='Last 30 days')
         for period in PERIODS:
             ttk.Radiobutton(line,text=period,variable=self.history_period,value=period,command=self.refresh_history).pack(side='left',padx=4)
         self.group=tk.StringVar(value='Wi-Fi / adapters')
-        ttk.Combobox(line,textvariable=self.group,state='readonly',values=['Wi-Fi / adapters','Applications','Daily totals'],width=19).pack(side='left',padx=8)
-        ttk.Button(line,text='Show',command=self.refresh_history).pack(side='left')
+        group_box=ttk.Combobox(line,textvariable=self.group,state='readonly',values=['Wi-Fi / adapters','Applications','Daily totals'],width=19)
+        group_box.pack(side='left',padx=8)
+        group_box.bind('<<ComboboxSelected>>',lambda _event:self.refresh_history())
         ttk.Button(line,text='Export CSV',command=self.export_history).pack(side='right')
         self.history_range=tk.StringVar()
         ttk.Label(tab,textvariable=self.history_range).pack(anchor='w',pady=4)
@@ -112,6 +113,7 @@ class Dashboard:
         self.history_network=tk.StringVar(value='All networks')
         self.history_network_box=ttk.Combobox(line,textvariable=self.history_network,values=['All networks'],state='readonly',width=35)
         self.history_network_box.pack(side='left')
+        self.history_network_box.bind('<<ComboboxSelected>>',lambda _event:self.refresh_history())
         ttk.Label(line,text='Choose a Wi-Fi to see its apps and daily usage.').pack(side='left',padx=10)
         self.history_status=tk.StringVar(value='History starts with this installation.')
         ttk.Label(tab,textvariable=self.history_status,wraplength=950).pack(anchor='w',pady=8)
@@ -236,7 +238,7 @@ class Dashboard:
         if os.name!='nt':ttk.Button(line,text='Reveal selected password',command=self.reveal_wifi).pack(side='left',padx=6)
         ttk.Button(line,text='Connect selected',command=lambda:self.wifi_action('connect')).pack(side='left',padx=6)
         ttk.Button(line,text='Forget selected',command=lambda:self.wifi_action('forget')).pack(side='left')
-        ttk.Label(tab,text='Connect asks before switching networks. Forget is blocked for the connected profile.\nWi-Fi usage: History → Last 30 days, Last month or This month → Wi-Fi / adapters.',wraplength=950).pack(anchor='w',pady=12)
+        ttk.Label(tab,text='Connect asks before switching networks. Forget is blocked for the connected profile.\nWi-Fi usage: Usage → Last 30 days, Last month or This month → Wi-Fi / adapters.',wraplength=950).pack(anchor='w',pady=12)
 
     def reveal_wifi(self):
         selected=self.wifi_table.selection()
