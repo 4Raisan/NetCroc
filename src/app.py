@@ -64,6 +64,10 @@ def health_status():
 
 if __name__ == '__main__':
     try:
+        if '--after-exit' in sys.argv:
+            from netcroc.platforms import wait_for_process_exit
+            index = sys.argv.index('--after-exit')
+            wait_for_process_exit(int(sys.argv[index+1]), float(sys.argv[index+2]))
         if '--routing-watch' in sys.argv:
             from netcroc.tun_service import worker
             worker()

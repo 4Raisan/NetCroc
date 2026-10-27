@@ -157,3 +157,17 @@ def native_control(path):
     else:raise ValueError('Unsupported native control action.')
     output=os.open(path,os.O_WRONLY|os.O_TRUNC|getattr(os,'O_NOFOLLOW',0))
     with os.fdopen(output,'w') as file:json.dump(dict(result=result),file)
+
+
+def wait_for_process_exit(pid, created, timeout=15):
+    """Let an approved replacement wait for the old singleton to close."""
+    import math
+    import psutil
+    import time
+    if pid <= 0 or not math.isfinite(created): raise ValueError('Invalid previous instance.')
+    try:
+        process = psutil.Process(pid)
+        if abs(process.create_time()-created) > .01: return
+        process.wait(timeout=timeout)
+    except psutil.NoSuchProcess: return
+    except psutil.TimeoutExpired: raise TimeoutError('The previous NetCroc instance is still closing.') from None
