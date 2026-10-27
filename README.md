@@ -14,9 +14,19 @@ A desktop app for Windows, macOS and Linux for checking connections, watching do
 
 ## Simple everyday controls
 
-The updated interface has four destinations: **Home**, **Usage**, **Wi-Fi** and **Tools**. Home shows live download/upload speeds and one Start/Pause control for optional connection checks. Usage keeps the three requested periods. DNS, VPN, SSH/TLS, VLESS and website tests remain available under Tools, with a Back button. Opening a tool does not connect a tunnel or change network settings.
+The main sidebar opens **Home**, **Connection checks**, **Live traffic**, **Usage**, **Wi-Fi** and **Tray mode**. DNS, VPN, SSH/TLS, VLESS and website tests stay in the Tools group below. The app uses its own draggable header, minimize/maximize/close buttons and resize grip. Close sends it to the tray by default; Tray mode includes an explicit Quit action and a close-behavior preference.
 
-The [beta 3 release](https://github.com/4Raisan/NetCroc/releases/tag/v0.4.0-beta.3) includes this simplified interface. The normal app reads real adapter speeds and saved usage history; synthetic data is limited to explicitly labelled development previews.
+Usage shows readable application names, groups unavailable process identities as **Unattributed traffic**, and offers **All / 1 MB+ / 5 MB+** display filters. Totals retain every recorded byte. Details shows the original file paths or identities; CSV retains unfiltered source records. Historic PIDs are never reassigned to today's running processes. The chart resizes with the page, and tables scroll horizontally when necessary.
+
+Tray mode provides **Left edge**, **Right edge**, **Top middle** and **Static** overlays. Edge overlays appear on hover and hide after the mouse leaves. Static overlays retain a dragged position. Speeds, top apps, Wi-Fi/ISP and VPN/exit information are selectable. The tray menu can toggle the overlay. Overlay mode, opacity, position and information choices are saved locally. No global input hook or packet-payload capture is used.
+
+VPN indication is a best-effort active-interface signal, not proof of protection. Exit country comes from a bounded public-IP lookup when a tunnel interface is observed, or through the Check public exit country button. Country checks are cached/throttled and are not a DNS-leak test; app-only proxies may exit elsewhere. No country is inferred from a saved profile name.
+
+These desktop, sidebar, Wi-Fi, app-history and ISP improvements are currently in source/local builds. Published [beta 3 downloads](https://github.com/4Raisan/NetCroc/releases/tag/v0.4.0-beta.3) use the earlier Tools overview. The normal app reads real adapter speeds and saved history; synthetic data is limited to explicitly labelled development previews.
+
+Automatic ISP mode uses a bounded HTTPS [public-network lookup](https://ipwhois.io/documentation), cached for 30 minutes on the same network. Recognized Sri Lankan providers select the keep-alive preset before activation; manual selection disables automatic mode. An unknown/unavailable lookup keeps the existing selection. A VPN may identify its exit provider instead of the SIM brand. No SSIDs, Wi-Fi passwords or app history are sent to the lookup service.
+
+Wi-Fi shows Network, Status and Password, with search and technical information behind Details. Empty app history explains why no data exists and offers Enable app tracking on Windows. Windows approval restarts NetCroc with capture permission; older per-app usage cannot be reconstructed. Empty periods hide the unused chart.
 
 ## What you can do
 
