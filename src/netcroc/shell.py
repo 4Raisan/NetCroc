@@ -22,7 +22,7 @@ class Shell:
         style.configure('.', background='#f4f7f5', foreground='#18372c', font=('Segoe UI', 10))
         style.configure('TFrame', background='#f4f7f5')
         style.configure('TLabel', background='#f4f7f5')
-        style.configure('TButton', padding=(12, 6), background='#e9efec', borderwidth=0, relief='flat', focusthickness=0)
+        style.configure('TButton', padding=(12, 6), background='#e8f2ec', borderwidth=0, relief='flat', focusthickness=0)
         style.configure('TCombobox', padding=6, fieldbackground='white', bordercolor='#dce6e0', arrowsize=14)
         style.layout('Segment.TRadiobutton', [('Toolbutton.border', {'sticky':'nswe','children':[('Toolbutton.padding',{'sticky':'nswe','children':[('Toolbutton.label',{'sticky':'nswe'})]})]})])
         style.configure('Segment.TRadiobutton', padding=(10,7),background='#e9efec',borderwidth=0)
