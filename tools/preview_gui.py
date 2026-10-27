@@ -30,7 +30,7 @@ def main():
     dashboard.refresh_history()
     book=app.shell.book
     try:
-        for index,name in ((9,'home'),(10,'tools'),(1,'live'),(2,'history'),(3,'dns'),(0,'keepalive'),(6,'vpn'),(7,'ssh-tls'),(8,'vless')):
+        for index,name in ((9,'home'),(10,'tray-mode'),(1,'live'),(2,'history'),(3,'dns'),(0,'keepalive'),(6,'vpn'),(7,'ssh-tls'),(8,'vless')):
             book.select(index);root.deiconify();root.update();dashboard.draw_graph();root.update()
             time.sleep(.35)
             user=ctypes.windll.user32
@@ -42,7 +42,7 @@ def main():
         ImageGrab.grab(window=window).save(output/'comparison.png')
         app.compare_dialog.destroy()
         dashboard.ssh_tab.edit()
-        editor=next(child for child in root.winfo_children() if isinstance(child,tk.Toplevel))
+        editor=next(child for child in root.winfo_children() if isinstance(child,tk.Toplevel) and not getattr(child,'netcroc_overlay',False))
         editor.geometry('+80+80');root.update()
         editor_book=next(child for child in editor.winfo_children() if isinstance(child,ttk.Notebook))
         for index,name in ((0,'ssh-account'),(1,'ssh-trust'),(2,'ssh-payload'),(3,'ssh-routing')):
