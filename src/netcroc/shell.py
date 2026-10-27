@@ -117,7 +117,12 @@ class Shell:
         ttk.Button(card, text='Connection settings', command=lambda: self.open('Keep-alive')).pack(anchor='w', pady=(12, 0))
         ttk.Label(home, text='Monitoring stays local. Speeds are shown in bytes per second.', style='Muted.TLabel', wraplength=650).pack(anchor='w', pady=22)
         self.app.status.trace_add('write', lambda *_: self.update_toggle())
+        ttk.Button(home, text='Check setup', command=lambda: self.open_setup()).pack(anchor='w')
         self.show('Home')
+
+    def open_setup(self):
+        from .setup_ui import show
+        show(self.app)
 
     def toggle_checks(self):
         if self.app.running or self.app.pending_start: self.app.pause()
