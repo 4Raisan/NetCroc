@@ -56,6 +56,15 @@ class Shell:
             button = ttk.Button(self.sidebar, text=name, style='Nav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=3); self.buttons[name] = button
         ttk.Label(home, text='Your connection at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
+        rates = ttk.Frame(home); rates.pack(fill='x')
+        for column, (label, value) in enumerate((('Download', dashboard.down), ('Upload', dashboard.up))):
+            rates.columnconfigure(column, weight=1, uniform='rates')
+            card = ttk.Frame(rates, style='Card.TFrame', padding=22)
+            card.grid(row=0, column=column, sticky='nsew', padx=(0, 8) if column==0 else (8, 0))
+            ttk.Label(card, text=label, style='Card.TLabel').pack(anchor='w')
+            ttk.Label(card, textvariable=value, style='Card.TLabel', font=('Segoe UI', 25, 'bold')).pack(anchor='w', pady=(8, 4))
+        ttk.Button(home, text='See apps and live graph  →', command=lambda: self.open('Live traffic')).pack(anchor='w', pady=(12, 24))
+        ttk.Label(home, text='Monitoring stays local. Speeds are shown in bytes per second.', style='Muted.TLabel', wraplength=650).pack(anchor='w', pady=22)
         ttk.Label(tools, text='Tools', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
         ttk.Label(tools, text='Choose a tool when you need it.', style='Muted.TLabel').pack(anchor='w', pady=(0, 20))
         grid = ttk.Frame(tools); grid.pack(fill='x')
