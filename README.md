@@ -201,3 +201,5 @@ Windows installs use `%LOCALAPPDATA%\NetCroc`; macOS uses `~/Library/Application
 The legacy instance-lock identifier also remains intentional. Saving the sign-in preference replaces the old startup entry with `NetCroc`; until then, an old entry may still point to the previous executable. Reorganizing documentation does not migrate local data or change startup/network settings.
 
 The Home screen’s **Check setup** button checks optional WireGuard and the SSH/VLESS routing core. Use its repair button to download the pinned, SHA-256-verified core; WireGuard opens its official installer page. Neither is required for basic monitoring.
+
+**About and updates:** The About panel shows the development version and checks the official GitHub release list in the background, including beta releases. The check sends a request to GitHub; it never downloads or installs an update. Use View releases to review downloads, or Star on GitHub to open the repository.
