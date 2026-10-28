@@ -168,12 +168,19 @@ class WindowChrome:
             self.root.overrideredirect(False); self.root.iconify()
 
     def maximize(self, _event=None):
-        if self.maximized:
-            self.root.geometry(self.restore_geometry); self.maximized = False
+        left, top, right, bottom = monitor_rect(self.root, (self.root.winfo_rootx()+100, self.root.winfo_rooty()+40))
+        full = abs(self.root.winfo_width()-(right-left)) <= 2 and abs(self.root.winfo_height()-(bottom-top)) <= 2
+        if self.maximized or full:
+            if self.restore_geometry:
+                self.root.geometry(self.restore_geometry)
+            else:
+                width=min(1120,max(900,right-left-120));height=min(800,max(600,bottom-top-120))
+                position_window(self.root,(width,height),(left+(right-left-width)//2,top+(bottom-top-height)//2))
+            self.maximized = False
         else:
             self.restore_geometry = self.root.geometry()
-            left, top, right, bottom = monitor_rect(self.root, (self.root.winfo_rootx()+100, self.root.winfo_rooty()+40))
             position_window(self.root, (right-left, bottom-top), (left, top)); self.maximized = True
+        if hasattr(self,'size_button'):self.size_button.configure(text='❐' if self.maximized else '□')
 
     def bind_drag(self, widget):
         widget.bind('<ButtonPress-1>', self.drag_start)

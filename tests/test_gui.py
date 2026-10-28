@@ -76,6 +76,11 @@ try:
     assert root.overrideredirect()
     app.window.maximize();root.update();assert app.window.maximized
     app.window.maximize();root.update();assert not app.window.maximized
+    from netcroc.desktop import monitor_rect,position_window
+    left,top,right,bottom=monitor_rect(root,(root.winfo_rootx()+100,root.winfo_rooty()+40))
+    position_window(root,(right-left,bottom-top),(left,top));root.update()
+    app.window.restore_geometry=None;app.window.maximized=False;app.window.maximize();root.update()
+    assert root.winfo_width()<right-left and root.winfo_height()<bottom-top
     if sys.platform=='win32':
         import ctypes
         from netcroc.desktop import handle
