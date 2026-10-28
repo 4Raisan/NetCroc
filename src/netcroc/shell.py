@@ -8,7 +8,7 @@ from PIL import Image, ImageTk
 
 def logo_path():
     base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parents[2]))
-    return base / 'assets' / 'netcroc.png'
+    return base / 'assets' / 'netcroc-transparent.png'
 
 
 class Shell:

@@ -22,7 +22,7 @@ def main():
         cmd=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--name','NetCroc','--paths',str(ROOT/'src'),
              '--distpath',str(work/'dist'),'--workpath',str(work/'work'),'--specpath',str(work)]
         cmd+=['--onedir','--windowed'] if system=='darwin' else ['--onefile']+(['--windowed'] if system=='windows' else [])
-        cmd+=['--add-data',str(ROOT/'assets/netcroc.png')+os.pathsep+'assets']
+        cmd+=['--add-data',str(ROOT/'assets/netcroc-transparent.png')+os.pathsep+'assets']
         # Pillow imports its Tk interpreter finder dynamically on Linux.
         if system=='linux':cmd+=['--hidden-import','PIL._tkinter_finder']
         if system=='windows':cmd+=['--icon',str(ROOT/'assets/netcroc.ico')]
