@@ -35,9 +35,9 @@ class Shell:
         style.map('TButton', background=[('active', '#dce9e2')])
         style.configure('Primary.TButton', background='#126548', foreground='white')
         style.map('Primary.TButton', background=[('active', '#0b5038'), ('disabled', '#d4e1da')])
-        style.configure('Nav.TButton', padding=(14, 9), anchor='w', background='#f4f7f5')
+        style.configure('Nav.TButton', padding=(14, 9), anchor='w', background='#eaf1ed', font=('Segoe UI',10))
         style.map('Nav.TButton', background=[('selected', '#dceee4'), ('active', '#e7eeea')])
-        style.configure('ToolNav.TButton', padding=(14, 6), anchor='w', background='#f4f7f5', font=('Segoe UI', 9))
+        style.configure('ToolNav.TButton', padding=(14, 6), anchor='w', background='#eaf1ed', font=('Segoe UI', 9))
         style.map('ToolNav.TButton', background=[('selected', '#dceee4'), ('active', '#e7eeea')])
         style.configure('Card.TFrame', background='white')
         style.configure('Card.TLabel', background='white')
@@ -64,13 +64,16 @@ class Shell:
         ttk.Label(brand, text='NetCroc', font=('Segoe UI', 17, 'bold')).pack(anchor='w')
         ttk.Label(brand, text='Your quiet network companion.', style='Muted.TLabel').pack(anchor='w')
         ttk.Button(header, text='×', width=3, command=app.close_window).pack(side='right')
-        ttk.Button(header, text='□', width=3, command=app.window.maximize).pack(side='right',padx=4)
+        self.size_button=ttk.Button(header, text='□', width=3, command=app.window.maximize); self.size_button.pack(side='right',padx=4)
+        app.window.size_button=self.size_button
         ttk.Button(header, text='—', width=3, command=app.window.minimize).pack(side='right')
         ttk.Button(header, text='To tray', command=app.hide).pack(side='right',padx=8)
         for widget in [header,brand,*brand.winfo_children(),*(w for w in header.winfo_children() if isinstance(w,ttk.Label))]: app.window.bind_drag(widget)
         outer = ttk.Frame(surface); outer.pack(fill='both', expand=True)
         body = ttk.Frame(outer); body.pack(fill='both', expand=True, padx=11, pady=(0, 11))
-        self.sidebar = ttk.Frame(body, width=178); self.sidebar.pack(side='left', fill='y', padx=(0, 12))
+        style.configure('Sidebar.TFrame',background='#eaf1ed')
+        style.configure('Sidebar.TLabel',background='#eaf1ed',foreground='#63776d')
+        self.sidebar = ttk.Frame(body, width=178, style='Sidebar.TFrame'); self.sidebar.pack(side='left', fill='y', padx=(0, 12))
         self.sidebar.pack_propagate(False)
         content = ttk.Frame(body); content.pack(side='left', fill='both', expand=True)
         self.book = ttk.Notebook(content, style='Quiet.TNotebook')
@@ -88,14 +91,18 @@ class Shell:
             ('DNS', 'DNS'), ('VPN', 'VPN'), ('SSH / TLS', 'SSH / TLS'),
             ('VLESS', 'VLESS'), ('Website tests', 'URL study'))}
         self.destinations = {**self.primary, **self.tools}
+        from .about import About
+        self.about=About(self.app)
         for name in self.primary:
             button = ttk.Button(self.sidebar, text=name, style='Nav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=3); self.buttons[name] = button
         ttk.Separator(self.sidebar).pack(fill='x', padx=12, pady=(16, 10))
-        ttk.Label(self.sidebar, text='TOOLS', style='Muted.TLabel', font=('Segoe UI', 9, 'bold')).pack(anchor='w', padx=14, pady=(0, 6))
+        ttk.Label(self.sidebar, text='TOOLS', style='Sidebar.TLabel', font=('Segoe UI', 9, 'bold')).pack(anchor='w', padx=14, pady=(0, 6))
         for name in self.tools:
             button = ttk.Button(self.sidebar, text=name, style='ToolNav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=2); self.buttons[name] = button
+        ttk.Button(self.sidebar,text='About',style='ToolNav.TButton',command=self.about.show).pack(side='bottom',fill='x',pady=2)
+        ttk.Label(self.sidebar,textvariable=self.about.summary,style='Sidebar.TLabel',wraplength=160,font=('Segoe UI',8)).pack(side='bottom',anchor='w',padx=12,pady=4)
         ttk.Label(home, text='Your network, at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
         self.network = tk.StringVar(value='Waiting for connection data…')
         ttk.Label(home, textvariable=self.network, style='Muted.TLabel').pack(anchor='w', pady=(0, 22))
