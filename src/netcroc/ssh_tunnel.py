@@ -10,6 +10,7 @@ import hmac
 import ipaddress
 import json
 import logging
+import os
 from pathlib import Path
 import re
 import select
@@ -28,7 +29,8 @@ SERVERS_URL = 'https://www.fastssh.com/page/ssh-ssl-stunnel-servers'
 DEFAULTS = dict(label='SSH TLS profile', host='', port=443, username='', password='',
                 tls=True, sni='', tls_pin='', ca_pem='', host_key='', expires='',
                 proxy_host='', proxy_port=8080, proxy_user='', proxy_password='',
-                payload_before='', payload_after='', local_port=1080, routing='socks')
+                payload_before='', payload_after='', local_port=1080, routing='socks',
+                idle_timeout=0, ca_only=False)
 SECRET_FIELDS = ('password', 'proxy_password', 'username', 'proxy_user',
                  'payload_before', 'payload_after', 'ca_pem')
 LIMIT = 128 * 1024
@@ -82,6 +84,14 @@ def validate(value, credentials=False):
         result[field] = number
     if result['routing'] not in ('socks', 'tun'):
         raise ValueError('Choose Local SOCKS5 or Whole-PC TCP routing.')
+    if isinstance(result['idle_timeout'], bool):
+        raise ValueError('Invalid idle timeout.')
+    try:
+        result['idle_timeout'] = int(result['idle_timeout'])
+    except (TypeError, ValueError):
+        raise ValueError('Idle timeout must be a number of seconds.') from None
+    if not 0 <= result['idle_timeout'] <= 86400:
+        raise ValueError('Idle timeout must be 0–86400 seconds (0 keeps idle connections alive).')
     result['label'] = ''.join(c for c in result['label'] if c.isprintable()).strip()[:80] or 'SSH TLS profile'
     if result['expires']:
         try:
@@ -265,6 +275,10 @@ def open_stream(profile, inspect=False, register=lambda stream: None):
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
                 context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
+            elif profile['ca_pem'] and profile['ca_only']:
+                # Trust only the supplied CA; the system store is not consulted.
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context.load_verify_locations(cadata=profile['ca_pem'])
             else:
                 context = ssl.create_default_context(cadata=profile['ca_pem'] or None)
             context.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -273,8 +287,17 @@ def open_stream(profile, inspect=False, register=lambda stream: None):
             actual = hashlib.sha256(stream.getpeercert(binary_form=True)).hexdigest()
             if pin and not hmac.compare_digest(pin, actual):
                 raise ssl.SSLCertVerificationError('The TLS certificate does not match the saved SHA-256 pin.')
-            info.update(tls_fingerprint=actual, tls_verified=bool(pin or not inspect),
-                        tls_mode='Pinned certificate' if pin else ('Inspection only' if inspect else 'CA + hostname'))
+            if pin:
+                mode = 'Pinned certificate'
+            elif inspect:
+                mode = 'Inspection only'
+            elif profile['ca_pem'] and profile['ca_only']:
+                mode = 'Custom CA only + hostname'
+            elif profile['ca_pem']:
+                mode = 'System + custom CA + hostname'
+            else:
+                mode = 'System CAs + hostname'
+            info.update(tls_fingerprint=actual, tls_verified=bool(pin or not inspect), tls_mode=mode)
         if profile['payload_after']:
             http_prelude(stream, render_payload(profile['payload_after'], profile))
         if profile['tls']:
@@ -379,10 +402,26 @@ def receive_exact(stream, length):
     return bytes(data)
 
 
+def enable_keepalive(sock):
+    """Detect dead peers with TCP keepalive so idle-but-live connections can stay open."""
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if os.name == 'nt':
+            sock.ioctl(socket.SIO_KEEPALIVE_VALS, (1, 60000, 15000))
+        else:
+            for name, value in (('TCP_KEEPIDLE', 60), ('TCP_KEEPINTVL', 15), ('TCP_KEEPCNT', 4)):
+                option = getattr(socket, name, None)
+                if option is not None:
+                    sock.setsockopt(socket.IPPROTO_TCP, option, value)
+    except OSError:
+        pass
+
+
 class SocksServer:
     """RFC 1928 CONNECT, IPv4/IPv6/domain destinations; DNS stays on the SSH server."""
-    def __init__(self, transport, port):
+    def __init__(self, transport, port, idle_timeout=0):
         self.transport = transport
+        self.idle_timeout = idle_timeout
         self.stop_event = threading.Event()
         self.lock = threading.RLock()
         self.resources = set()
@@ -423,6 +462,7 @@ class SocksServer:
         connected = False
         try:
             client.settimeout(10)
+            enable_keepalive(client)
             version, count = receive_exact(client, 2)
             methods = receive_exact(client, count)
             if version != 5 or 0 not in methods:
@@ -465,7 +505,7 @@ class SocksServer:
 
             def pump(source, target, direction):
                 try:
-                    while not self.stop_event.is_set() and time.monotonic() - activity[0] < 120:
+                    while not self.stop_event.is_set() and (not self.idle_timeout or time.monotonic() - activity[0] < self.idle_timeout):
                         try:
                             data = source.recv(65536)
                         except socket.timeout:
@@ -561,7 +601,7 @@ class Session:
             transport.set_keepalive(20)
             self.transport = transport
             self.info = info
-            self.socks = SocksServer(transport, profile['local_port'])
+            self.socks = SocksServer(transport, profile['local_port'], idle_timeout=profile['idle_timeout'])
             if self.cancel.is_set():
                 raise OSError('Connection cancelled.')
             if profile['routing'] == 'tun':

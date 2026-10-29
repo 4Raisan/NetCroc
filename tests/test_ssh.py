@@ -120,6 +120,41 @@ class Endpoint:
 
 
 class SSHTests(unittest.TestCase):
+    def test_socks_idle_timeout_is_configurable(self):
+        import socket as _s
+        class Chan:
+            def __init__(self, sock): self.sock = sock
+            def settimeout(self, t): self.sock.settimeout(t)
+            def recv(self, n): return self.sock.recv(n)
+            def sendall(self, data): self.sock.sendall(data)
+            def shutdown(self, how): self.sock.shutdown(how)
+            def close(self): self.sock.close()
+        for timeout, expect_closed in ((1, True), (0, False)):
+            a, b = _s.socketpair()
+            transport = MagicMock(); transport.open_channel.return_value = Chan(b)
+            server = ssh.SocksServer(transport, 0, idle_timeout=timeout); self.addCleanup(server.stop)
+            client = _s.create_connection(('127.0.0.1', server.port)); client.settimeout(3)
+            client.sendall(b'\x05\x01\x00'); self.assertEqual(ssh.receive_exact(client, 2), b'\x05\x00')
+            client.sendall(b'\x05\x01\x00\x03' + bytes([11]) + b'example.com' + b'\x00\x50')
+            self.assertEqual(ssh.receive_exact(client, 4)[1], 0)
+            ssh.receive_exact(client, 6)
+            if expect_closed:
+                self.assertEqual(client.recv(1), b'')
+            else:
+                with self.assertRaises(_s.timeout): client.recv(1)
+            client.close(); a.close()
+
+    def test_ca_only_trust_choice_is_honored_and_reported(self):
+        endpoint = Endpoint(tls=True); self.addCleanup(endpoint.close)
+        info = ssh.probe(endpoint.profile(ca_only=True))
+        self.assertEqual(info['tls_mode'], 'Custom CA only + hostname')
+        self.assertTrue(info['tls_verified'])
+        info = ssh.probe(endpoint.profile(ca_only=False))
+        self.assertEqual(info['tls_mode'], 'System + custom CA + hostname')
+        other = Endpoint(tls=True); self.addCleanup(other.close)
+        with self.assertRaises(ssl.SSLCertVerificationError):
+            ssh.probe(endpoint.profile(ca_only=True, port=other.port))
+
     def test_tls_parallel_channels(self):
         endpoint=self.endpoint(tls=True);session=self.session(endpoint.profile())
         def transfer(index):
@@ -174,7 +209,7 @@ class SSHTests(unittest.TestCase):
         sock, response = self.socks(session); self.assertEqual(response[1],0)
         sock.sendall(b'tls'); self.assertEqual(ssh.receive_exact(sock,3), b'tls')
         self.assertEqual(endpoint.sni,['localhost'])
-        self.assertEqual(session.info['tls_mode'],'CA + hostname')
+        self.assertEqual(session.info['tls_mode'],'System + custom CA + hostname')
 
     def test_untrusted_tls_fails_before_login(self):
         endpoint = self.endpoint(tls=True)
@@ -265,12 +300,31 @@ class SSHTests(unittest.TestCase):
             archive.writestr('release/LICENSE',b'fixture-license')
             archive.writestr('../../outside.txt',b'not extracted')
         raw = buffer.getvalue()
-        with tempfile.TemporaryDirectory() as folder, patch('netcroc.ssh_routing.urllib.request.urlopen') as download, patch.object(routing,'SHA256',hashlib.sha256(raw).hexdigest()):
+        with tempfile.TemporaryDirectory() as folder, patch('netcroc.ssh_routing.urllib.request.urlopen') as download, \
+             patch.object(routing,'SHA256',hashlib.sha256(raw).hexdigest()), \
+             patch.dict(routing.EXE_SHA256,{'windows-amd64':hashlib.sha256(b'fixture-executable').hexdigest()}):
             download.return_value.__enter__.return_value.read.return_value=raw
             core = routing.Routing(folder); core.install(); core.verify()
             self.assertEqual((Path(folder)/'LICENSE').read_bytes(),b'fixture-license')
             self.assertEqual(len(list(Path(folder).iterdir())),3)
             core.exe.write_bytes(b'changed')
+            with self.assertRaises(ValueError): core.verify()
+
+    @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
+    def test_verify_rewrites_of_binary_and_sidecar_hash_are_still_rejected(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer,'w') as archive:
+            archive.writestr('release/sing-box.exe',b'fixture-executable')
+            archive.writestr('release/LICENSE',b'fixture-license')
+        raw = buffer.getvalue()
+        with tempfile.TemporaryDirectory() as folder, patch('netcroc.ssh_routing.urllib.request.urlopen') as download, \
+             patch.object(routing,'SHA256',hashlib.sha256(raw).hexdigest()), \
+             patch.dict(routing.EXE_SHA256,{'windows-amd64':hashlib.sha256(b'fixture-executable').hexdigest()}):
+            download.return_value.__enter__.return_value.read.return_value=raw
+            core = routing.Routing(folder); core.install()
+            # An attacker who rewrites both files consistently must still fail.
+            core.exe.write_bytes(b'tampered')
+            (Path(folder)/'verified.sha256').write_text(hashlib.sha256(b'tampered').hexdigest(),encoding='ascii')
             with self.assertRaises(ValueError): core.verify()
 
     @unittest.skipUnless(os.name=='nt','Windows job launch; POSIX supervisor and isolated TUN lab cover native launch')
