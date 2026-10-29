@@ -23,3 +23,8 @@ Desktop.ini
 # VPN configuration files contain credentials.
 *.conf
 *.conf.dpapi
+
+# Generated knowledge graph. Curated community labels stay versioned so the
+# naming survives a clean checkout; everything else is rebuildable.
+graphify-out/*
+!graphify-out/.graphify_labels.json

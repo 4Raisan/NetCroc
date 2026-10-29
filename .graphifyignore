@@ -1,0 +1,30 @@
+# graphify corpus scope: application code, tests, tools and docs only.
+
+# Generated local evidence and runnable packages (also gitignored).
+releases/
+test-artifacts/
+build/
+dist/
+
+# Logo/icon design drafts and binary artwork. Not application logic.
+assets/
+
+# Never re-ingest our own output.
+graphify-out/
+
+# Python runtime internals.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Private VPN profiles and credentials must never enter the graph.
+*.conf
+*.conf.dpapi
+.env
+.env.*
+*.log
+*.sqlite3
+*.exe
+*.zip
+*.msi
