@@ -14,9 +14,13 @@ import tempfile
 ROOT=Path(__file__).resolve().parents[1]
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--local',action='store_true',help='Update the main releases folder (Windows only)')
+    args=parser.parse_args()
+    if args.local and platform.system()!='Windows':raise ValueError('Local EXE update requires Windows.')
     system=platform.system().lower();arch='arm64' if platform.machine().lower() in ('arm64','aarch64') else 'x64'
     label={'darwin':'macos','linux':'linux','windows':'windows'}[system]
-    output=ROOT/'test-artifacts/packages';output.mkdir(parents=True,exist_ok=True)
+    output=ROOT/('releases' if args.local else 'test-artifacts/packages');output.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='netcroc-native-build-') as temp:
         work=Path(temp)
         cmd=[sys.executable,'-m','PyInstaller','--noconfirm','--clean','--name','NetCroc','--paths',str(ROOT/'src'),
@@ -33,7 +37,7 @@ def main():
         subprocess.run([sys.executable,str(ROOT/'tools/verify_bundle.py'),str(exe)],check=True)
         subprocess.run([sys.executable,str(ROOT/'tools/smoke_frozen.py'),str(exe)],check=True)
         if system=='windows':
-            asset=output/f'NetCroc-{label}-{arch}.exe';shutil.copy2(exe,asset)
+            asset=output/('NetCroc.exe' if args.local else f'NetCroc-{label}-{arch}.exe');shutil.copy2(exe,asset)
         elif system=='darwin':
             subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(work/'dist/NetCroc.app')],check=True)
             asset=output/f'NetCroc-{label}-{arch}.zip'
