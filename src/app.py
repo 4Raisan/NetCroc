@@ -36,6 +36,7 @@ def report_error(error):
     else:
         print(message, file=sys.stderr)
 
+
 def health_status():
     """Read-only DNS helper, dispatched before any UI or singleton mutex."""
     import socket

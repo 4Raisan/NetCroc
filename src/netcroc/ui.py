@@ -227,7 +227,11 @@ class App:
 
     def enable_app_tracking(self):
         from .platforms import admin
-        if os.name != 'nt' or admin():
+        if os.name != 'nt':
+            self.shell.open('Live traffic'); return
+        if admin():
+            self.dashboard.capture_status.set('Retrying app tracking…')
+            self.dashboard.capture_retry.set()
             self.shell.open('Live traffic'); return
         if self.dashboard.ssh_tab.session or self.dashboard.vless_tab.session:
             messagebox.showinfo('Enable app tracking', 'Disconnect your SSH/VLESS tunnel before restarting NetCroc.'); return
@@ -480,7 +484,7 @@ def main():
             kernel.CloseHandle(mutex)
             return
     root = tk.Tk()
-    if diagnostic: root.withdraw()
+    root.withdraw()  # Build and lay out all controls before revealing the window.
     app = App(root, diagnostic)
     app.show_event = event
     if diagnostic:
@@ -501,6 +505,8 @@ def main():
         app.tray = None
         app.status.set('Tray unavailable · restart the app; use Quit below to exit.')
         ttk.Button(root, text='Quit', command=app.quit).pack()
+    root.update_idletasks()
+    if '--tray' not in sys.argv or not app.tray: app.show()
     if '--resume-checks' in sys.argv and '--tray' not in sys.argv: app.start(automatic=True)
     if '--tray' in sys.argv and app.tray:
         app.start(automatic=True)
@@ -516,8 +522,8 @@ def posix_main(diagnostic):
     from .platforms import InstanceLock
     lock=None if diagnostic else InstanceLock()
     root=tk.Tk()
+    root.withdraw()
     try:
-        if diagnostic:root.withdraw()
         app=App(root,diagnostic)
         if diagnostic:
             root.update_idletasks()
@@ -526,6 +532,8 @@ def posix_main(diagnostic):
             app.quit();return
         try:app.create_tray()
         except Exception:app.tray=None
+        root.update_idletasks()
+        if '--tray' not in sys.argv or not app.tray: app.show()
         if '--tray' in sys.argv:
             app.start(automatic=True)
             if app.tray:app.hide()
