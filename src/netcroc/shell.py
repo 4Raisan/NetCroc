@@ -50,11 +50,11 @@ class Shell:
         root.configure(background='#69bc2a')
         surface = ttk.Frame(root); surface.pack(fill='both', expand=True, padx=2, pady=2)
         app.window.round_surface(surface)
-        header = ttk.Frame(surface, padding=(24, 12))
+        header = ttk.Frame(surface, padding=(20, 5))
         header.pack(fill='x')
         try:
             with Image.open(logo_path()) as source:
-                image = source.convert('RGBA'); image.thumbnail((42, 42), Image.Resampling.LANCZOS)
+                image = source.convert('RGBA'); image.thumbnail((52, 52), Image.Resampling.LANCZOS)
             self.logo = ImageTk.PhotoImage(image, master=root)
             ttk.Label(header, image=self.logo).pack(side='left', padx=(0, 12))
             root.iconphoto(True, self.logo)
@@ -62,7 +62,7 @@ class Shell:
             self.logo = None
         brand = ttk.Frame(header); brand.pack(side='left')
         ttk.Label(brand, text='NetCroc', font=('Segoe UI', 17, 'bold')).pack(anchor='w')
-        ttk.Label(brand, text='Your quiet network companion.', style='Muted.TLabel').pack(anchor='w')
+        ttk.Label(brand, text='Your quiet network companion.', style='Muted.TLabel',font=('Segoe UI',9)).pack(anchor='w')
         ttk.Button(header, text='×', width=3, command=app.close_window).pack(side='right')
         self.size_button=ttk.Button(header, text='□', width=3, command=app.window.maximize); self.size_button.pack(side='right',padx=4)
         app.window.size_button=self.size_button
@@ -101,8 +101,22 @@ class Shell:
         for name in self.tools:
             button = ttk.Button(self.sidebar, text=name, style='ToolNav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=2); self.buttons[name] = button
-        ttk.Button(self.sidebar,text='About',style='ToolNav.TButton',command=self.about.show).pack(side='bottom',fill='x',pady=2)
-        ttk.Label(self.sidebar,textvariable=self.about.summary,style='Sidebar.TLabel',wraplength=160,font=('Segoe UI',8)).pack(side='bottom',anchor='w',padx=12,pady=4)
+        from .updates import VERSION,REPO
+        import webbrowser
+        foot=ttk.Frame(self.sidebar,style='Sidebar.TFrame');foot.pack(side='bottom',fill='x',padx=10,pady=(0,4))
+        ttk.Label(foot,text='Theme',style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
+        self.theme_var=tk.StringVar(value=self.app.desktop.data['theme'])
+        themes=ttk.Combobox(foot,textvariable=self.theme_var,values=('Light','Mint','Sand'),state='readonly',width=13)
+        themes.pack(fill='x');themes.bind('<<ComboboxSelected>>',lambda _event:self.apply_theme())
+        ttk.Button(foot,text='Star on GitHub',style='ToolNav.TButton',command=lambda:webbrowser.open(REPO)).pack(fill='x')
+        ttk.Label(foot,text='Version '+VERSION,style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
+        self.update_button=ttk.Button(foot,text='Update available',style='Primary.TButton',command=lambda:webbrowser.open(REPO+'/releases'))
+        ttk.Label(foot,textvariable=self.about.summary,style='Sidebar.TLabel',wraplength=155,font=('Segoe UI',8)).pack(anchor='w')
+        def update_badge(*_):
+            if self.about.summary.get().startswith('Update available:'):self.update_button.pack(fill='x',pady=2)
+            else:self.update_button.pack_forget()
+        self.about.summary.trace_add('write',update_badge)
+        self.apply_theme()
         ttk.Label(home, text='Your network, at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
         self.network = tk.StringVar(value='Waiting for connection data…')
         ttk.Label(home, textvariable=self.network, style='Muted.TLabel').pack(anchor='w', pady=(0, 22))
@@ -126,6 +140,15 @@ class Shell:
         self.app.status.trace_add('write', lambda *_: self.update_toggle())
         ttk.Button(home, text='Check setup', command=lambda: self.open_setup()).pack(anchor='w')
         self.show('Home')
+
+    def apply_theme(self):
+        palette={'Light':('#f4f7f5','#eaf1ed','#ffffff'),'Mint':('#eaf7ef','#d8efdf','#ffffff'),'Sand':('#f7f4ec','#eee9dc','#fffdf8')}
+        name=self.theme_var.get();base,side,card=palette[name];style=ttk.Style(self.app.root)
+        for name_ in ('.','TFrame','TLabel'):style.configure(name_,background=base)
+        style.configure('Sidebar.TFrame',background=side);style.configure('Sidebar.TLabel',background=side)
+        style.configure('Nav.TButton',background=side);style.configure('ToolNav.TButton',background=side)
+        style.configure('Card.TFrame',background=card);style.configure('Card.TLabel',background=card)
+        self.app.desktop.update({'theme':name})
 
     def open_setup(self):
         from .setup_ui import show
