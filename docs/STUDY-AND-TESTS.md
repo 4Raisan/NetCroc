@@ -1,3 +1,17 @@
+# Whole-PC TUN live validation and tunnel hardening — 29 October 2026
+
+A live **Windows whole-PC VLESS TUN lab passed with administrator access and a working local synthetic sing-box server**: the `NetCrocVLESS` adapter became ready, HTTPS was forwarded through the tunnel, DNS stayed healthy during, and on teardown the adapter was removed, the original DNS restored and healthy afterwards (`test-artifacts/live-tunnel-check.json`). This validates the Windows TUN routing, DNS-hijack and cleanup machinery on real hardware. The lab exits locally, so a real overseas provider endpoint is **not** certified by it, and macOS whole-PC remains unvalidated; macOS keeps the experimental label while Windows/Linux do not.
+
+**196 automated tests passed** (five POSIX-only skips). Tunnel hardening in the same pass:
+
+- The fixed 120-second SOCKS idle drop is replaced by a per-profile `idle_timeout` (0 = keepalive-only, the default) plus TCP keepalive, so long-running/idle applications stay connected while dead peers are still detected.
+- SSH TLS offers a choice between system CAs plus a custom CA and **custom-CA-only** trust (`ca_only`), explained in the editor and reported in `tls_mode`.
+- `Routing.verify()` compares the executable against **in-code pinned executable hashes** (`EXE_SHA256`) per platform rather than a `verified.sha256` file beside it; rewriting both the binary and the sidecar is still rejected. `install()` also checks the extracted executable against the pin.
+- Administrator access is requested only by the features that need it; startup no longer force-elevates, matching the README. The duplicate per-second process scan in the monitor loop was removed.
+- Usage retention confirmed at **62 days**: "Last month" is fully retained at every month boundary, and the Usage footer now states that older days are removed automatically.
+
+---
+
 # Recovery follow-up — 27 October 2026
 
 The original 24-hour process/history observer finished but failed its coverage requirement (18.69 sampled hours, three observer gaps, zero history-read errors). Read-only inspection of Windows power events and minute coverage showed overlapping power transitions and history gaps. This is evidence of suspension/scheduling periods, not proof that every gap has one cause. The original failure report is preserved.

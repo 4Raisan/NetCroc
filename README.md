@@ -94,7 +94,7 @@ On macOS/Linux, DNS and WireGuard operations request native OS authorization (`o
 | WireGuard | Official Windows client | `wg-quick`, `wg`, `wireguard-go` | `wg-quick`, `wg`; DNS may need `resolvconf` |
 | SSH/TLS local SOCKS5 | Included | Included | Included |
 | VLESS local SOCKS5 | Verified optional sing-box | Verified native sing-box | Verified native sing-box |
-| Whole-PC SSH/VLESS | Administrator | OS authorization; live TUN validation pending | OS authorization; real isolated TUN/crash lab passed |
+| Whole-PC SSH/VLESS | Administrator; live Windows TUN lab passed (local server, clean teardown) | OS authorization; experimental, live TUN validation pending | OS authorization; real isolated TUN/crash lab passed |
 | Sign-in startup | Registry entry | LaunchAgent | XDG autostart entry |
 
 TShark attribution captures metadata on one default interface, excludes local destinations and omits unresolved/ambiguous sockets. Short-lived connections, shared UDP sockets and capture loss can make per-app totals incomplete; adapter totals remain independent. Wi-Fi passwords on macOS/Linux are revealed only after an explicit click, never during startup.
@@ -120,6 +120,8 @@ Recording happens while NetCroc is running. Missing time cannot be reconstructed
 | VLESS / REALITY | Compatible provider/server account and the optional verified sing-box core | [VLESS guide](docs/VLESS.md) |
 
 VLESS supports TCP, WebSocket, gRPC and HTTPUpgrade, plus REALITY and Vision. It uses sing-box; NetCroc does not install an Xray server or 3x-ui panel. Local SOCKS5 affects only apps configured to use it. Whole-PC routing needs elevation. SSH whole-PC mode carries TCP and tunneled DNS; other UDP/ICMP is blocked.
+
+SSH SOCKS connections use a configurable idle timeout (`0` keeps idle connections alive using TCP keepalive) so long-running applications are not dropped. SSH over TLS lets you choose between trusting system CAs plus your custom CA, or **only** your custom CA. The optional routing core is verified against executable hashes pinned in the code, not a hash file stored beside the binary.
 
 WireGuard profiles are encrypted for your OS account (Windows DPAPI or an AES-GCM key in the OS keyring). On Windows, connecting creates a named service and machine-encrypted runtime configuration accessible to Administrators and Local System. POSIX wg-quick uses a root-owned mode-0600 plaintext runtime file inside a mode-0700 folder in `/run/netcroc` or `/var/run/netcroc`; it is removed on a successful disconnect and retained if needed for recovery. Script hooks and unsupported profile extensions are rejected. Original imported files remain untouched and can contain private credentials: keep them out of Git.
 
@@ -202,4 +204,4 @@ The legacy instance-lock identifier also remains intentional. Saving the sign-in
 
 The Home screen’s **Check setup** button checks optional WireGuard and the SSH/VLESS routing core. Use its repair button to download the pinned, SHA-256-verified core; WireGuard opens its official installer page. Neither is required for basic monitoring.
 
-**About and updates:** The About panel shows the development version and checks the official GitHub release list in the background, including beta releases. The check sends a request to GitHub; it never downloads or installs an update. Use View releases to review downloads, or Star on GitHub to open the repository.
+**About and updates:** The sidebar shows the development version and checks the official GitHub release list in the background, including beta releases. The check sends a request to GitHub; it never downloads or installs an update. When a newer release is found, use the green update button to review downloads, or Star on GitHub to open the repository.

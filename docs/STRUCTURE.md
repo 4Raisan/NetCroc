@@ -27,6 +27,11 @@ NetCroc keeps the application, tests, development tools and documentation separa
 | `netcroc/desktop.py` | Local desktop preferences, monitor geometry and custom window controls. |
 | `netcroc/tray_mode.py` | Optional edge/static overlays and best-effort tunnel/exit observations. |
 | `netcroc/shell.py` | Direct sidebar navigation, Home overview and network tool links. |
+| `netcroc/about.py` | About panel and the non-blocking release summary shown in the sidebar. |
+| `netcroc/updates.py` | GitHub release-list check and version ordering; never downloads or installs. |
+| `netcroc/prerequisites.py` | Read-only inspection of optional WireGuard and the verified routing core. |
+| `netcroc/setup_ui.py` | Setup and repair dialog; installation stays user initiated. |
+| `netcroc/tool_ui.py` | Shared primary-action bar and More menu used by the tool tabs. |
 | `netcroc/dashboard.py` | Traffic, history, DNS, Wi-Fi, research and VPN tabs; shared monitoring loop. |
 | `netcroc/isp.py` | Bounded HTTPS ISP lookup and recognized provider mapping; manual fallback. |
 | `netcroc/core.py` | Connection-check settings, presets and shared local-data helpers. |
@@ -59,6 +64,23 @@ The UI calls the backends; the monitoring loop writes history. GUI diagnostics d
 | Explicit live network tests | `live_admin_checks.py`, `live_dns_rollback_check.py`, `live_dns_timeout_check.py`, `live_tunnel_check.py`, `live_wireguard_check.py`, `live_wifi_switch_check.py`, `live_provider_check.py`, `live_posix_routing_check.py` |
 
 The `live_*` scripts are opt-in lab tools, not startup code. Only the explicitly isolated Linux routing lab runs in CI; it refuses the host network namespace. Depending on the script they need elevation, change DNS/routes, create temporary services or switch Wi-Fi. Review their arguments and recovery behaviour before running them at the PC. Standard tests use synthetic credentials; provider checks require a private local profile or an existing encrypted profile ID.
+
+## Knowledge graph
+
+A [graphify](https://pypi.org/project/graphifyy/) knowledge graph indexes `src/`, `tests/`, `tools/` and the Markdown in `docs/` and `README.md` for navigation and refactor impact analysis. Extraction is local AST plus Markdown headings: no source is sent to an LLM and no API key is used. A healthy build is roughly 1,072 nodes, 2,676 edges and 50 named communities.
+
+```powershell
+python -m graphify update .          # incremental re-extract after code changes
+python -m graphify affected "History" --depth 2   # what a change would break
+python -m graphify god-nodes --top 15             # architectural hubs
+python -m graphify query "how does DNS rollback work" --context call
+```
+
+`affected` is the useful one before a refactor: it lists the production call sites and the exact test cases that reach a symbol, so you know which tests to run. Ambiguous labels are refused rather than guessed — `Traffic`, `Session`, `ProfileStore` and `crypt()` each exist in more than one module, so pass the node id (for example `src_netcroc_traffic_traffic`) or a file path.
+
+Outputs live in `graphify-out/`: `graph.html` (interactive), `graph.json` (queryable), `GRAPH_REPORT.md` (audit). Generated artifacts are gitignored; the hand-curated community names in `.graphify_labels.json` are tracked so they survive a clean checkout and are reused without any LLM call. `.graphifyignore` keeps `assets/`, `releases/`, `test-artifacts/` and credential files out of the corpus.
+
+Post-commit, post-checkout, post-merge and post-rewrite hooks rebuild the graph in the background (`graphify hook status`, `graphify hook uninstall`). Two verified limits: `from netcroc import vpn` and `from . import dns` resolve to `__init__.py` rather than the target module, so the graph under-reports coupling for package-level imports — 12 test-to-module edges at the time of writing — and `graph.html` loads its vis-network renderer from a CDN, so it needs internet access to draw.
 
 ## Assets and design drafts
 
