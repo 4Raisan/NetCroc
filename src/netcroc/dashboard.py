@@ -19,6 +19,7 @@ from .traffic import Rates,Traffic,process_identity
 from .wifi import Wifi
 from . import dns,research,vpn
 from .app_names import aggregate,identity,UNKNOWN
+from .tool_ui import actions,help_for,StatusLine
 
 def table(parent,columns,widths=None):
     frame=ttk.Frame(parent); frame.pack(fill='both',expand=True,pady=8)
@@ -82,7 +83,7 @@ class Dashboard:
         if not diagnostic: self.folder.mkdir(parents=True,exist_ok=True)
         self.history=History(':memory:' if diagnostic else self.folder/'usage.sqlite3')
         self.dns=dns.DnsManager(self.folder/'dns-restore.json')
-        self.traffic=None
+        self.traffic=None; self.capture_retry=threading.Event()
         self.tab_live=self.tab(notebook,'Live traffic')
         self.tab_history=self.tab(notebook,'Usage history')
         self.tab_dns=self.tab(notebook,'DNS')
@@ -124,6 +125,9 @@ class Dashboard:
         self.graph=tk.Canvas(tab,height=150,bg='#ffffff',highlightthickness=0); self.graph.pack(fill='x',pady=6)
         ttk.Label(tab,text='Download / upload · last 90 samples',style='Muted.TLabel').pack(anchor='w',pady=(0,4))
         self.capture_status=tk.StringVar(value='Per-app monitoring initializes below.')
+        self.capture_summary=tk.StringVar(value='App tracking is starting…')
+        ttk.Label(tab,textvariable=self.capture_summary,style='Muted.TLabel',wraplength=780).pack(anchor='w',pady=(4,0))
+        ttk.Button(tab,text='Retry app tracking',command=self.app.enable_app_tracking).pack(anchor='w',pady=4)
         ttk.Button(tab,text='Tracking details',command=lambda:info_dialog(self.root,'About live traffic',self.capture_status,'Speeds use bytes per second (1024-based). Adapter totals include local traffic. App capture counts Internet TCP/UDP; a VPN may attribute traffic to its tunnel app.')).pack(anchor='e')
         if os.name=='nt' and not admin():
             ttk.Button(tab,text='Enable app tracking',command=self.app.enable_app_tracking).pack(anchor='w')
@@ -176,10 +180,10 @@ class Dashboard:
         self.history_empty_message=tk.StringVar()
         ttk.Label(self.history_empty,textvariable=self.history_empty_title,font=('Segoe UI',16,'bold')).pack(anchor='w',pady=(8,10))
         ttk.Label(self.history_empty,textvariable=self.history_empty_message,wraplength=650).pack(anchor='w',pady=(0,16))
-        self.history_enable=ttk.Button(self.history_empty,text='Enable app tracking',command=self.app.enable_app_tracking)
+        self.history_enable=ttk.Button(self.history_empty,text='Retry app tracking',command=self.app.enable_app_tracking)
         ttk.Button(self.history_empty,text='See network totals',command=self.show_network_history).pack(anchor='w',pady=8)
         self.history_precision=tk.StringVar(value='Missing history is unknown, not zero usage.')
-        self.history_footer=ttk.Label(tab,text='Only usage recorded while NetCroc is running appears here.',style='Muted.TLabel',wraplength=740)
+        self.history_footer=ttk.Label(tab,text='Only usage recorded while NetCroc is running appears here. Recorded data is kept for 62 days; older days are removed automatically.',style='Muted.TLabel',wraplength=740)
         self.history_footer.pack(side='bottom',fill='x',pady=4,before=self.history_body)
         self.history_body.bind('<Configure>',self.resize_history)
         self.bars.bind('<Configure>',lambda _event:self.draw_history_bars())
@@ -241,7 +245,7 @@ class Dashboard:
                     self.history_empty_title.set('App usage has not been recorded yet')
                     needs_admin=os.name=='nt' and not admin()
                     self.history_empty_message.set('Windows approval is needed to track each app. Enable tracking to record usage from now on. Earlier app usage cannot be recovered.' if needs_admin else 'Only traffic captured while app tracking is active appears here. Check Live traffic for capture status. Earlier app usage cannot be recovered.')
-                    self.history_enable.configure(text='Enable app tracking' if needs_admin else 'Check app tracking',command=self.app.enable_app_tracking)
+                    self.history_enable.configure(text='Enable app tracking' if needs_admin else 'Retry app tracking',command=self.app.enable_app_tracking)
                     self.history_enable.pack(anchor='w',before=self.history_empty.winfo_children()[-1])
                 else:
                     self.history_empty_title.set('No saved usage for this period')
@@ -293,20 +297,17 @@ class Dashboard:
 
     def build_dns(self):
         tab=self.tab_dns
-        ttk.Label(tab,text='DNS testing and safe restore',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Tests do not change settings. DNS may help name lookups; it does not raise your download speed.',wraplength=950).pack(anchor='w',pady=5)
-        self.dns_status=tk.StringVar(value='Loading adapters…')
-        ttk.Label(tab,textvariable=self.dns_status,wraplength=950).pack(anchor='w',pady=8)
-        line=ttk.Frame(tab); line.pack(fill='x')
+        ttk.Label(tab,text='DNS',font=('Segoe UI',19,'bold')).pack(anchor='w')
+        ttk.Label(tab,text='1. Test your connection   2. Compare results   3. Apply only if useful',style='Muted.TLabel').pack(anchor='w',pady=(6,14))
+        self.dns_status=tk.StringVar(value='Loading connection…')
+        ttk.Label(tab,textvariable=self.dns_status,wraplength=780).pack(anchor='w',pady=6)
+        line=ttk.Frame(tab);line.pack(fill='x')
         self.dns_adapter=tk.StringVar()
-        self.dns_box=ttk.Combobox(line,textvariable=self.dns_adapter,state='readonly',width=35); self.dns_box.pack(side='left')
-        ttk.Button(line,text='Refresh',command=self.refresh_dns).pack(side='left',padx=5)
-        ttk.Button(line,text='Test DNS',command=self.test_dns).pack(side='left')
+        self.dns_box=ttk.Combobox(line,textvariable=self.dns_adapter,state='readonly',width=30);self.dns_box.pack(side='left')
         self.dns_table=table(tab,('Resolver','Servers','Median lookup','Failures'),[180,330,180,130])
-        line=ttk.Frame(tab); line.pack(fill='x')
-        ttk.Button(line,text='Apply selected DNS',command=self.apply_dns).pack(side='left')
-        ttk.Button(line,text='Restore original DNS',command=self.restore_dns).pack(side='left',padx=8)
-        ttk.Label(tab,text='Apply requires administrator access and your confirmation. IPv4 only; IPv6 is left unchanged.\nOriginal settings are saved before changes. An independent watchdog restores an uncommitted change.\nA brief DNS interruption is still possible: leave settings unchanged during a remote session.',wraplength=950).pack(anchor='w',pady=12)
+        actions(tab,[('Test DNS',self.test_dns),('Apply selected',self.apply_dns)],[('Refresh connections',self.refresh_dns),('Restore original DNS',self.restore_dns),
+            ('How DNS testing works',help_for(self.root,'DNS','Testing changes nothing. A faster resolver may help website lookups; it does not increase download bandwidth. Apply changes IPv4 DNS and requires confirmation. Original settings are saved and a watchdog can roll back an uncommitted change. Use Restore original DNS to undo it.'))])
+        ttk.Label(tab,text='Testing leaves your settings unchanged.',style='Muted.TLabel').pack(anchor='w',pady=6)
 
     def task(self,kind,fn):
         if self.busy:
@@ -366,7 +367,8 @@ class Dashboard:
         ttk.Entry(search,textvariable=self.wifi_search).pack(side='left',fill='x',expand=True)
         self.wifi_search.trace_add('write',lambda *_:self.render_wifi())
         self.visible_profiles=[]
-        self.wifi_table=table(tab,('Network','Status','Password'),[390,120,280])
+        self.wifi_table=table(tab,('Network','Status','Password','Copy'),[390,120,230,65])
+        self.wifi_table.bind('<ButtonRelease-1>',self.copy_wifi_cell)
         line=ttk.Frame(tab);line.pack(fill='x')
         ttk.Button(line,text='Connect',command=lambda:self.wifi_action('connect')).pack(side='left')
         ttk.Button(line,text='Refresh',command=self.refresh_wifi).pack(side='left',padx=6)
@@ -378,13 +380,25 @@ class Dashboard:
     def render_wifi(self):
         search=self.wifi_search.get().strip().casefold()
         self.visible_profiles=sorted((p for p in self.profiles if search in p['profile'].casefold()),key=lambda p:(not p['connected'],p['profile'].casefold()))
-        rows(self.wifi_table,[(p['profile'],'Connected' if p['connected'] else 'Saved',p['password']) for p in self.visible_profiles])
+        rows(self.wifi_table,[(p['profile'],'Connected' if p['connected'] else 'Saved',p['password'],'Copy') for p in self.visible_profiles])
         connected=next((p['profile'] for p in self.profiles if p['connected']),None)
         self.wifi_status.set(('Connected to '+connected+' · ' if connected else '')+f'{len(self.visible_profiles)} saved networks'+(' shown' if search else ''))
 
     def selected_wifi(self):
         selected=self.wifi_table.selection()
         return self.visible_profiles[self.wifi_table.index(selected[0])] if selected else None
+
+    def copy_wifi_cell(self,event):
+        if self.wifi_table.identify_column(event.x) != '#4':return
+        row=self.wifi_table.identify_row(event.y)
+        if not row:return
+        index=self.wifi_table.index(row)
+        if index>=len(self.visible_profiles):return
+        password=self.visible_profiles[index]['password']
+        if not password or password in ('Windows permission required','No readable saved password','Open network'):
+            self.wifi_status.set('This network has no readable saved password to copy.');return
+        self.root.clipboard_clear();self.root.clipboard_append(password)
+        self.wifi_status.set('Password copied to clipboard.')
 
     def wifi_details(self):
         item=self.selected_wifi()
@@ -421,14 +435,14 @@ class Dashboard:
 
     def build_research(self):
         tab=self.tab_research
-        ttk.Label(tab,text='Find a responsive HEAD endpoint',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Dialog, SLT, Mobitel, Airtel and Hutch candidates. Results describe this connection, not a guaranteed speed boost.\nA hostname matching your ISP is not inherently better. No DNS or network settings change.',wraplength=950).pack(anchor='w',pady=8)
-        ttk.Button(tab,text='Run URL study (about 1–3 minutes)',command=lambda:self.task('research',research.study)).pack(anchor='w')
-        self.research_status=tk.StringVar(value='Keep-alive supports a 1-second interval. Checks never overlap; failures back off.')
+        ttk.Label(tab,text='Website tests',font=('Segoe UI',19,'bold')).pack(anchor='w')
+        ttk.Label(tab,text='1. Test ISP websites   2. Pick a responsive result   3. Use it for connection checks',wraplength=950).pack(anchor='w',pady=8)
+        ttk.Button(tab,text='Test websites (1–3 minutes)',command=lambda:self.task('research',research.study)).pack(anchor='w')
+        self.research_status=tk.StringVar(value='Ready. Testing leaves your network settings unchanged.')
         ttk.Label(tab,textvariable=self.research_status,wraplength=950).pack(anchor='w',pady=8)
         self.research_table=table(tab,('ISP','Candidate URL','Successful checks','Median HEAD'),[110,500,170,150])
         ttk.Button(tab,text='Use selected URL for keep-alive',command=self.use_url).pack(anchor='w')
-        ttk.Label(tab,text='One request per second means up to 86,400 checks/day. Data and server load are not zero.\n403, 405 and 429 responses are not suitable endpoints for ongoing HEAD checks.',wraplength=950).pack(anchor='w',pady=10)
+        ttk.Button(tab,text='How to read results',command=help_for(self.root,'Website tests','Results measure response times on this connection, not a guaranteed speed boost. A matching ISP hostname is not inherently faster. Failed/rate-limited endpoints are unsuitable. One check per second can use data and create 86,400 requests per day.')).pack(anchor='w',pady=6)
 
     def use_url(self):
         selected=self.research_table.selection()
@@ -439,30 +453,45 @@ class Dashboard:
     def build_vpn(self):
         tab=self.tab_vpn
         ttk.Label(tab,text='WireGuard VPN',font=('Segoe UI',19,'bold')).pack(anchor='w')
-        ttk.Label(tab,text='Import your own .conf file. Importing does not connect. Connect / Disconnect requires Run as administrator.\nInstall the official WireGuard Windows client once; NetCroc does not provide VPN servers or accounts.',wraplength=950).pack(anchor='w',pady=6)
-        links=ttk.Frame(tab);links.pack(fill='x',pady=4)
-        ttk.Button(links,text='Get WireGuard ↗',command=lambda:webbrowser.open(vpn.INSTALL_URL)).pack(side='left')
-        for name,plan,url in vpn.PROVIDERS:
-            ttk.Button(links,text=name+' ↗',command=lambda url=url:webbrowser.open(url)).pack(side='left',padx=4)
-        ttk.Label(tab,text='Proton: free / paid · Mullvad and IVPN: paid · Windscribe: Pro / Build-A-Plan',wraplength=950).pack(anchor='w',pady=4)
-        self.vpn_status=tk.StringVar(value='Import a profile to begin. '+('WireGuard client found.' if self.vpn_store.backend.installed() else 'WireGuard client is not installed.'))
-        ttk.Label(tab,textvariable=self.vpn_status,wraplength=950).pack(anchor='w',pady=8)
-        self.vpn_table=table(tab,('Profile','Server','Routes','Service','Handshake'),[180,270,150,140,180])
-        line=ttk.Frame(tab);line.pack(fill='x')
-        for label,command in (('Import .conf',self.import_vpn),('Refresh status',self.refresh_vpn),('Connect',lambda:self.vpn_action('connect')),('Disconnect',lambda:self.vpn_action('disconnect')),('Remove saved profile',lambda:self.vpn_action('remove'))):
-            ttk.Button(line,text=label,command=command).pack(side='left',padx=(0,6))
-        self.vpn_ip=tk.StringVar(value='Public IP has not been checked. IP checks are optional and are not DNS-leak tests.')
-        ttk.Label(tab,textvariable=self.vpn_ip,wraplength=950).pack(anchor='w',pady=(12,4))
-        line=ttk.Frame(tab);line.pack(fill='x')
-        ttk.Button(line,text='Save current IP as baseline',command=lambda:self.check_vpn_ip(True)).pack(side='left')
-        ttk.Button(line,text='Check public IP',command=self.check_vpn_ip).pack(side='left',padx=8)
-        ttk.Label(tab,text='Connecting can change PC-wide routes and DNS and interrupt a remote connection. Closing NetCroc leaves an active tunnel running; use Disconnect to stop it.\nA running service alone does not prove a successful VPN connection. Check handshake and public IP. ISP data charges still apply.',wraplength=950).pack(anchor='w',pady=10)
-        # Saved metadata is read only when Refresh status is requested.
+        ttk.Label(tab,text='1. Import your provider file   2. Select it   3. Connect',style='Muted.TLabel').pack(anchor='w',pady=(6,14))
+        self.vpn_line=StatusLine(tab,'Import a .conf profile to begin.')
+        self.vpn_status=self.vpn_line.var
+        self.vpn_table=table(tab,('Profile','Server','Routes','Service','Handshake'),[170,240,130,120,140])
+        self.vpn_table.bind('<<TreeviewSelect>>',lambda _event:self._update_vpn_buttons())
+        extra=[('Refresh status',self.refresh_vpn),('Remove selected profile',lambda:self.vpn_action('remove')),('Check public IP',lambda:self.check_vpn_ip()),('Save baseline IP',lambda:self.check_vpn_ip(True)),('Install WireGuard',lambda:webbrowser.open(vpn.INSTALL_URL))]
+        extra += [('Get profile: '+name,lambda url=url:webbrowser.open(url)) for name,plan,url in vpn.PROVIDERS]
+        extra += [('How to use WireGuard',help_for(self.root,'WireGuard VPN','Use a .conf file from a provider and install WireGuard. NetCroc does not supply accounts or servers. Importing does not connect. Connecting changes system routes/DNS and may interrupt internet. Check handshake and public IP to verify connectivity. Closing NetCroc leaves this tunnel active; use Disconnect to stop it. Data charges still apply.'))]
+        self.vpn_bar=actions(tab,[('Import profile',self.import_vpn),('Connect',lambda:self.vpn_action('connect')),('Disconnect',lambda:self.vpn_action('disconnect'))],extra)
+        self.vpn_ip=tk.StringVar(value='Public IP not checked.')
+        ttk.Label(tab,textvariable=self.vpn_ip,wraplength=780).pack(anchor='w',pady=6)
+        ttk.Label(tab,text='Disconnect here to stop the VPN. Closing NetCroc leaves it running.',style='Muted.TLabel').pack(anchor='w',pady=6)
+        self._vpn_empty(0);self._update_vpn_buttons()
+
+    def _vpn_empty(self,count):
+        self.vpn_table.configure(height=6 if count else 3)
+        self.vpn_table.master.pack_configure(expand=bool(count))
+
+    def _update_vpn_buttons(self):
+        selection=self.vpn_table.selection()
+        chosen=bool(selection)
+        running=False
+        if chosen:
+            values=self.vpn_table.item(selection[0],'values')
+            running=bool(values) and str(values[3]).lower()=='running'
+        idle=not self.busy
+        self.vpn_bar.set_enabled({'Connect':idle and chosen and not running,
+                                  'Disconnect':idle and chosen and running,
+                                  'Import profile':idle})
+        if running:self.vpn_bar.set_primary('Disconnect')
+        elif chosen:self.vpn_bar.set_primary('Connect')
+        else:self.vpn_bar.set_primary('Import profile')
 
     def import_vpn(self):
         if self.busy:return
         path=filedialog.askopenfilename(title='Import your WireGuard profile',filetypes=[('WireGuard configuration','*.conf')])
-        if path:self.task('vpn-import',lambda:self.vpn_store.import_file(path))
+        if path:
+            self.vpn_line.busy('Encrypting and saving the profile…')
+            self.task('vpn-import',lambda:self.vpn_store.import_file(path))
 
     def refresh_vpn(self):
         if self.stop.is_set():return
@@ -476,7 +505,9 @@ class Dashboard:
     def selected_vpn(self):
         selection=self.vpn_table.selection()
         if not selection:raise ValueError('Choose an imported VPN profile first.')
-        return next(item for item in self.vpn_profiles if item['id']==selection[0])
+        for item in self.vpn_profiles:
+            if item['id']==selection[0]:return item
+        raise ValueError('That profile is no longer saved. Refresh the list and choose again.')
 
     def vpn_action(self,action):
         if self.busy:return
@@ -491,6 +522,7 @@ class Dashboard:
             messagebox.showerror('VPN',str(error));return
         text={'connect':'Connect this VPN? It can change routes and DNS for the PC and interrupt remote access.','disconnect':'Disconnect this VPN and return traffic to your normal connection?','remove':'Remove this saved profile from NetCroc? Your original imported file will remain.'}[action]
         if not messagebox.askyesno('VPN · '+item['label'],text):return
+        self.vpn_line.busy({'connect':'Connecting the VPN tunnel…','disconnect':'Disconnecting the VPN tunnel…','remove':'Removing the saved profile…'}[action])
         def perform():
             getattr(self.vpn_store,action)(item['id'])
             return action
@@ -498,6 +530,7 @@ class Dashboard:
 
     def check_vpn_ip(self,baseline=False):
         if self.busy:return
+        self.vpn_line.busy('Saving the baseline public IP…' if baseline else 'Checking the public IP…')
         def check():
             import ipaddress
             with urllib.request.urlopen('https://api.ipify.org',timeout=8) as response:
@@ -515,8 +548,17 @@ class Dashboard:
         try:wifi=Wifi()
         except OSError:pass
         identities={}; address_map={}; wifi_names={}; last_refresh=0; previous_wall=datetime.now(); buffered=[]; covered=0; flush_at=time.monotonic()
+        capture_started=time.monotonic();capture_bytes=0;fallback_attempted=False
         while not self.stop.is_set():
             try:
+                if self.capture_retry.is_set():
+                    self.capture_retry.clear()
+                    if self.traffic:self.traffic.close()
+                    try:
+                        self.traffic=Traffic(system=fallback_attempted);self.traffic.start();capture_started=time.monotonic();capture_bytes=0
+                        self.events.put(('capture',self.traffic.status))
+                    except Exception as error:
+                        self.traffic=None;self.events.put(('capture',f'Per-app capture unavailable: {type(error).__name__}. Adapter totals still work.'))
                 now=time.monotonic(); wall=datetime.now()
                 if now-last_refresh>=5:
                     last_refresh=now
@@ -542,13 +584,20 @@ class Dashboard:
                                     wifi_names[name]=profile
                                 except OSError:pass
                     identities={p.pid:(p.info.get('exe') or p.info.get('name') or UNKNOWN) for p in psutil.process_iter(['name','exe'],ad_value=None)}
-                identities={p.pid:(p.info.get('exe') or p.info.get('name') or UNKNOWN) for p in psutil.process_iter(['name','exe'],ad_value=None)}
                 elapsed,interfaces=rates.sample(psutil.net_io_counters(pernic=True,nowrap=False),now)
                 if elapsed>10:
                     if self.traffic:self.traffic.drain()
                     previous_wall=wall
                     self.stop.wait(1)
                     continue  # Sleep/suspension is unknown coverage, not hours of zero traffic.
+                capture_bytes+=sum(max(0,v[2])+max(0,v[3]) for v in interfaces.values())
+                if os.name=='nt' and self.traffic and not self.traffic.events and not fallback_attempted and now-capture_started>=15 and capture_bytes>=4096 and admin():
+                    fallback_attempted=True;self.traffic.close()
+                    self.events.put(('capture','No app events received. Trying Windows system capture…'))
+                    try:
+                        self.traffic=Traffic(system=True);self.traffic.start()
+                    except Exception as error:
+                        self.traffic=None;self.events.put(('capture',f'App tracking unavailable: {type(error).__name__}. Network totals still work.'))
                 live_apps=defaultdict(lambda:[0,0])
                 batch=[]
                 for name,(down_s,up_s,down,up) in interfaces.items():
@@ -626,14 +675,18 @@ class Dashboard:
         while not self.events.empty():
             kind,value=self.events.get()
             if kind=='live':self.live(value);continue
-            if kind=='capture':self.capture_status.set(value);continue
+            if kind=='capture':
+                self.capture_status.set(value)
+                lower=value.lower()
+                self.capture_summary.set('App tracking is recording.' if 'capture active' in lower else 'App tracking is unavailable. Network speeds still work.' if 'unavailable' in lower or 'stopped' in lower else 'No app traffic recorded yet. Retrying Windows capture…' if 'trying windows' in lower else 'Waiting for app traffic. If the list stays empty, choose Retry app tracking.')
+                continue
             self.busy=False
+            self.vpn_line.stop_busy()
             if kind=='adapters':
                 self.adapter_info=value; self.dns_box.configure(values=[f"{a['name']} ({a['index']})" for a in value])
                 if value:self.dns_box.current(0)
                 pending=self.dns.load()
-                self.dns_status.set('Current IPv4 DNS: '+('; '.join(f"{a['name']}: {', '.join(a['servers'])}" for a in value) or 'No connected adapter')+
-                    (' · Pending DNS rollback: use Restore original DNS as administrator.' if pending and pending['state']=='pending' else ' · No automatic changes.'))
+                self.dns_status.set(('Choose a connection and select Test DNS.' if value else 'No connected adapter found.')+(' Original settings are available to restore.' if pending else ''))
             elif kind=='dns':
                 self.dns_results=value
                 rows(self.dns_table,[(r['name'],', '.join(r['servers']),f"{r['median']:.1f} ms" if r['median'] is not None else 'Unavailable',f"{r['failures']}/{r['attempts']}") for r in value])
@@ -652,12 +705,13 @@ class Dashboard:
                 for item,status in value:
                     self.vpn_table.insert('', 'end',iid=item['id'],values=(item['label'],item['endpoint'],item['route'],status['service'],status['handshake']))
                 if selected and self.vpn_table.exists(selected[0]):self.vpn_table.selection_set(selected[0])
-                self.vpn_status.set(f'{len(value)} saved profiles. '+('WireGuard client found.' if self.vpn_store.backend.installed() else 'Install the official WireGuard client to connect.'))
+                self._vpn_empty(len(value))
+                self.vpn_line.info(f'{len(value)} saved profiles. '+('WireGuard client found.' if self.vpn_store.backend.installed() else 'Install the official WireGuard client to connect.'))
             elif kind=='vpn-import':
-                self.vpn_status.set('Profile encrypted and saved. No connection or DNS changes were made.')
+                self.vpn_line.ok('Profile encrypted and saved. No connection or DNS changes were made.')
                 self.refresh_vpn()
             elif kind=='vpn-action':
-                self.vpn_status.set('VPN operation completed. Refreshing actual service status…')
+                self.vpn_line.info('VPN operation completed. Refreshing actual service status…')
                 self.refresh_vpn()
             elif kind=='vpn-ip':
                 address,baseline=value
@@ -669,7 +723,8 @@ class Dashboard:
                     self.vpn_ip.set('Current public IPv4: '+address+comparison+' · this is not a DNS-leak test.')
             elif kind=='message':messagebox.showinfo('NetCroc',value)
             elif kind=='error':
-                self.dns_status.set(value); self.wifi_status.set(value); self.vpn_status.set(value); messagebox.showerror('NetCroc',value)
+                self.dns_status.set(value); self.wifi_status.set(value); self.vpn_line.error(value); messagebox.showerror('NetCroc',value)
+            self._update_vpn_buttons()
         self.root.after(250,self.poll)
 
     def close(self):
