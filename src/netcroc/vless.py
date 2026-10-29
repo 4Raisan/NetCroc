@@ -85,6 +85,15 @@ def parse_link(text):
     except Exception:
         raise ValueError('Invalid or unsupported VLESS link. Import one TCP/WS/gRPC/HTTPUpgrade profile with TLS or REALITY; subscription URLs and insecure certificate overrides are not accepted.') from None
 
+def parse_links(text):
+    """Accept one or several share links; keep ALPN commas inside each URL."""
+    if not isinstance(text,str) or len(text)>65536:raise ValueError('Paste at most 64 KB of VLESS links.')
+    pieces=[p.strip().strip(',;') for p in re.split(r'[\r\n]+|,\s*(?=vless://)|\s+(?=vless://)',text.strip()) if p.strip().strip(',;')]
+    if not pieces or len(pieces)>20:raise ValueError('Paste between 1 and 20 VLESS links.')
+    # Validate the complete batch before any profile is saved.
+    return [parse_link(piece) for piece in pieces]
+
+
 class ProfileStore(ssh.ProfileStore):
     def save(self,value,identifier=None):
         value=validate(value);identifier=identifier or uuid.uuid4().hex
@@ -193,7 +202,8 @@ class Session(Routing):
                         return self.status
                     time.sleep(.1)
                 raise OSError('VLESS listener/adapter did not become ready.')
-            except Exception: self.stop();raise
+            except Exception:
+                self.profile_id=None;self.stop();raise
     def stop(self):
         self.cancel.set()
         super().stop();self.status='Disconnected'
@@ -221,7 +231,9 @@ def proxy_ip(port):
                 part=secure.recv(4096)
                 if not part: break
                 data+=part
+        if b'\r\n\r\n' not in data: raise OSError('The IP check service returned an incomplete response.')
         header,body=data.split(b'\r\n\r\n',1)
-        if header.split(b'\r\n')[0].split()[1]!=b'200': raise OSError('IP check failed.')
+        status_line=header.split(b'\r\n')[0].split()
+        if len(status_line)<2 or status_line[1]!=b'200': raise OSError('IP check failed.')
         return str(ipaddress.ip_address(body.decode().strip()))
     finally: sock.close()

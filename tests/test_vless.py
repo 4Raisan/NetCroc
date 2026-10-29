@@ -37,6 +37,42 @@ class VlessTests(unittest.TestCase):
         out=vless.outbound(value);self.assertEqual(out['tls']['server_name'],'tls.example')
         self.assertEqual(out['transport']['headers'],{'Host':'cdn.example'})
 
+    def test_pasted_batch_preserves_alpn_commas_and_validates_every_link(self):
+        link=f'vless://{USER}@server.example:443?security=tls&sni=server.example&type=tcp&alpn=h2,http/1.1#Server'
+        values=vless.parse_links(link+', '+link)
+        self.assertEqual(len(values),2);self.assertEqual(values[0]['alpn'],'h2,http/1.1')
+        self.assertEqual(len(vless.parse_links(link+'\n'+link)),2)
+        with self.assertRaises(ValueError):vless.parse_links(link+'\nvless://bad')
+        with self.assertRaises(ValueError):vless.parse_links('')
+
+    def test_proxy_ip_rejects_truncated_http_response(self):
+        class Stream:
+            def __init__(self, chunks): self.chunks = list(chunks)
+            def sendall(self, data): pass
+            def recv(self, n): return self.chunks.pop(0) if self.chunks else b''
+            def close(self): pass
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+        raw = Stream([b'\x05\x00', b'\x05\x00\x00\x01' + bytes(6), bytes(6)])
+        secure = Stream([b'HTTP/1.0 200 OK\r\n', b''])
+        context = unittest.mock.MagicMock()
+        context.wrap_socket.return_value = secure
+        with patch('netcroc.vless.socket.create_connection', return_value=raw), \
+             patch('ssl.create_default_context', return_value=context):
+            with self.assertRaises(OSError) as caught:
+                vless.proxy_ip(1081)
+        self.assertIn('incomplete response', str(caught.exception))
+
+    def test_failed_start_clears_profile_identity(self):
+        import uuid as _uuid
+        value = dict(vless.DEFAULTS, host='127.0.0.1', uuid=str(_uuid.UUID(int=1)), security='none', routing='socks')
+        session = vless.Session(Path('.'))
+        with patch('netcroc.vless.socket.getaddrinfo', return_value=[(2, 1, 6, '', ('127.0.0.1', 443))]), \
+             patch.object(vless.Session, 'check_config', side_effect=ValueError('rejected')):
+            with self.assertRaises(ValueError):
+                session.start_profile(value, 'c' * 32)
+        self.assertIsNone(session.profile_id)
+
     def test_invalid_links_never_echo_credentials(self):
         for suffix in ('allowInsecure=1','type=xhttp','type=ws&type=tcp','encryption=aes','headerType=http'):
             with self.assertRaises(ValueError) as caught:vless.parse_link(f'vless://{USER}@example.com?{suffix}')
