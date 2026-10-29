@@ -16,10 +16,28 @@ import os
 import tarfile
 
 POSIX_HASHES={'linux-amd64': '699a1b510aa4396b2176d32d1181920399ebf1e267835da6f3b598d0f7c24968', 'darwin-arm64': '0d8c7f5ed5d587b0f1a5e9772a708ec3bfa4ac4c9329604b01d8d9c2ba406838', 'darwin-amd64': 'eae86b9b033bba50b7c44ab719e4bfac0aca05efd28483390ed3aa510f32db25'}
+# Hashes of the extracted executable from the SHA-verified official archives.
+# verify() compares against these, not a hash file beside the binary.
+EXE_SHA256={'windows-amd64': '8f30682ee198855440d2a7fe070d5d3653793b2d01bb8c85eea88f93bbe7c8b9',
+    'linux-amd64': '1264361b5f8868c8768f7555d3e77e20118bf503c41ac08bb290a0d99056aa3a',
+    'darwin-arm64': '6546126c1759683fe85798da92409215d53c50e0f2b346b4f74a61babc8dbec2',
+    'darwin-amd64': 'affe521a424d217e013e7c4c84278ecfdf7e9e4108f253a41562272afd5f527e'}
 VERSION = '1.14.4'
 URL = f'https://github.com/SagerNet/sing-box/releases/download/v{VERSION}/sing-box-{VERSION}-windows-amd64.zip'
 SHA256 = '99185d75d314a07dbba4a130c8ad986cbeb629a07927975636b341ca61f991df'
 HIDDEN = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+
+
+def target_key():
+    machine = platform.machine().lower()
+    if os.name == 'nt':
+        return 'windows-amd64' if machine in ('amd64', 'x86_64') else ''
+    arch = 'arm64' if machine in ('arm64', 'aarch64') else 'amd64' if machine in ('x86_64', 'amd64') else ''
+    return ('darwin' if platform.system() == 'Darwin' else 'linux') + '-' + arch if arch else ''
+
+
+def pinned_exe_hash():
+    return EXE_SHA256.get(target_key())
 
 
 def configuration(port, upstream):
@@ -121,6 +139,8 @@ class Routing:
                     name=Path(member.name).name
                     if name in wanted and member.isfile() and member.size<=100*1024*1024:selected[name]=archive.extractfile(member).read()
         if self.exe.name not in selected or 'LICENSE' not in selected:raise ValueError('Routing archive is incomplete.')
+        if hashlib.sha256(selected[self.exe.name]).hexdigest() != pinned_exe_hash():
+            raise ValueError('Extracted routing core does not match the pinned executable hash.')
         self.folder.mkdir(parents=True,exist_ok=True)
         for name,data in selected.items():
             target=self.folder/name;temporary=target.with_suffix('.download')
@@ -130,8 +150,10 @@ class Routing:
         (self.folder/'verified.sha256').write_text(hashlib.sha256(self.exe.read_bytes()).hexdigest(),encoding='ascii')
 
     def verify(self):
+        expected = pinned_exe_hash()
+        if not expected:
+            raise ValueError('No pinned routing core for this operating system/architecture.')
         try:
-            expected = (self.folder / 'verified.sha256').read_text(encoding='ascii').strip()
             actual = hashlib.sha256(self.exe.read_bytes()).hexdigest()
         except OSError:
             raise FileNotFoundError('Download the optional routing core first.') from None
