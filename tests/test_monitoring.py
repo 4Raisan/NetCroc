@@ -85,6 +85,15 @@ class CaptureTests(unittest.TestCase):
         if ctypes.sizeof(ctypes.c_void_p)!=8:self.skipTest('x64 layout')
         self.assertEqual([ctypes.sizeof(t) for t in (Header,Record,EventTrace,LogHeader,Logfile)],[80,112,88,280,448])
 
+    def test_system_logger_uses_classic_provider_opcodes(self):
+        from netcroc.traffic import record_event_id,TCP_GUID,UDP_GUID
+        record=Record();record.header.id=0;record.header.opcode=11
+        record.header.provider=GUID.from_buffer_copy(TCP_GUID)
+        self.assertEqual(record_event_id(record),11)
+        record.header.provider=GUID.from_buffer_copy(UDP_GUID)
+        self.assertEqual(record_event_id(record),43)
+        record.header.opcode=26;self.assertEqual(record_event_id(record),58)
+
     def test_tcp_udp_v4_v6_directions(self):
         for value in (10,26,42,58):self.assertEqual(event_direction(value),'up')
         for value in (11,27,43,59):self.assertEqual(event_direction(value),'down')

@@ -63,8 +63,19 @@ RECEIVE={11,27,43,59}
 def event_direction(event_id):
     return 'up' if event_id in SEND else 'down' if event_id in RECEIVE else None
 
+TCP_GUID=uuid.UUID('9a280ac0-c8e0-11d1-84e2-00c04fb998a2').bytes_le
+UDP_GUID=uuid.UUID('bf3a50c5-a9c9-4988-a005-2df0b7c80f80').bytes_le
+
+def record_event_id(record):
+    provider=bytes(record.header.provider)
+    if provider in (TCP_GUID,UDP_GUID):
+        opcode=record.header.opcode
+        return opcode+32 if provider==UDP_GUID and opcode in (10,11,26,27) else opcode
+    return record.header.id
+
 class Traffic:
-    def __init__(self):
+    def __init__(self,system=False):
+        self.system=system
         self.lock=threading.Lock()
         self.pending=defaultdict(lambda:[0,0])
         self.status='Per-app capture requires Run as administrator; adapter totals still work.'
@@ -102,13 +113,14 @@ class Traffic:
 
     def _event(self,ptr):
         try:
-            direction=event_direction(ptr.contents.header.id)
+            event_id=record_event_id(ptr.contents)
+            direction=event_direction(event_id)
             if not direction:
                 return
             # TDH reads the installed Windows manifest, rather than guessing payload offsets.
             pid=int.from_bytes(self._property(ptr,'PID',4),'little')
             size=int.from_bytes(self._property(ptr,'size',4),'little')
-            ipv6=ptr.contents.header.id in {26,27,58,59}
+            ipv6=event_id in {26,27,58,59}
             source=self._property(ptr,'saddr',16 if ipv6 else 4)
             destination=self._property(ptr,'daddr',16 if ipv6 else 4)
             family=socket.AF_INET6 if ipv6 else socket.AF_INET
@@ -116,7 +128,7 @@ class Traffic:
             # daddr=remote) even on RECV. UDP uses packet source/destination.
             # Confirmed with live known-payload transfer on Windows, not only
             # synthetic records: reversing TCP RECV silently discarded downloads.
-            tcp=ptr.contents.header.id in {10,11,26,27}
+            tcp=event_id in {10,11,26,27}
             local=socket.inet_ntop(family,source if tcp or direction=='up' else destination)
             remote=socket.inet_ntop(family,destination if tcp or direction=='up' else source)
             if not ipaddress.ip_address(remote).is_global:
@@ -124,6 +136,7 @@ class Traffic:
             with self.lock:
                 self.pending[(pid,local)][direction=='up']+=size
                 self.events+=1
+                self.status='Per-app Internet TCP/UDP capture active (global remote addresses; LAN/loopback excluded).'
         except Exception:
             # ctypes callbacks must never unwind into Windows.
             self.errors+=1
@@ -136,7 +149,8 @@ class Traffic:
         props=c.cast(self.storage,c.POINTER(Properties)).contents
         props.wnode.size=size; props.wnode.flags=0x20000; props.wnode.context=1
         props.wnode.guid=GUID.from_buffer_copy(uuid.uuid4().bytes_le)
-        props.buffer=64; props.minimum=8; props.maximum=64; props.mode=0x100
+        props.buffer=64; props.minimum=8; props.maximum=64; props.mode=0x100 | (0x02000000 if self.system else 0)
+        if self.system:props.enable=0x10010000  # TCP/UDP only; skip system-configuration rundown.
         props.flush=1; props.name_offset=c.sizeof(Properties)
         code=self.adv.StartTraceW(c.byref(self.session),self.name,self.storage)
         if code:
@@ -144,7 +158,7 @@ class Traffic:
             return False
         provider=GUID.from_buffer_copy(uuid.UUID('7dd42a49-5329-4832-8dfd-43d979153a88').bytes_le)
         try:
-            code=self.adv.EnableTraceEx2(self.session,c.byref(provider),1,5,0xffffffffffffffff,0,0,None)
+            code=0 if self.system else self.adv.EnableTraceEx2(self.session,c.byref(provider),1,5,0x30,0,0,None)
             if code:
                 raise OSError(code,'Cannot enable network provider')
             self.logfile=Logfile()
@@ -155,7 +169,7 @@ class Traffic:
                 raise OSError('Cannot consume network events')
             self.thread=threading.Thread(target=self._consume,daemon=True)
             self.thread.start()
-            self.status='Per-app Internet TCP/UDP capture active (global remote addresses; LAN/loopback excluded).'
+            self.status=('Windows fallback' if self.system else 'Capture')+' initialized; waiting for app traffic.'
             return True
         except Exception:
             self.close()
@@ -163,7 +177,7 @@ class Traffic:
 
     def _consume(self):
         code=self.adv.ProcessTrace(c.byref(self.consumer),1,None,None)
-        if code and not self.closed:
+        if not self.closed:
             self.status=f'Per-app capture stopped (Windows {code}); data is incomplete.'
 
     def drain(self):
