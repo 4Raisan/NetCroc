@@ -1,5 +1,6 @@
 """Explicit, user-managed SSH/TLS connections; workers never touch Tk."""
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -8,14 +9,21 @@ import webbrowser
 from . import ssh_tunnel as ssh
 from .ssh_routing import Routing
 from .history import speed
+from .tool_ui import actions, help_for, StatusLine
+
+# Windows whole-PC TUN is live-validated; Linux passed an isolated lab; macOS is not.
+_TUN_TAG = ' (experimental)' if sys.platform == 'darwin' else ''
 
 
 class SSHTab:
+    ADD_LABEL = 'Add account'
+
     def __init__(self, app, notebook, folder, diagnostic=False):
         self.root = app.root
         self.app = app
         self.closed = False
         self.busy = False
+        self.stopping = None
         self.events = queue.Queue()
         self.store = ssh.ProfileStore(folder / 'ssh' / 'profiles')
         self.routing = Routing(folder / 'ssh' / 'routing-core')
@@ -25,30 +33,30 @@ class SSHTab:
         tab = ttk.Frame(notebook, padding=16)
         notebook.add(tab, text='SSH / TLS')
         ttk.Label(tab, text='SSH / TLS tunnel', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
-        ttk.Label(tab, text='Use your own provider account. SNI and payload settings must match your server.\nLocal SOCKS5 affects only apps configured to use it. Whole-PC TCP requires administrator access.', wraplength=950).pack(anchor='w', pady=6)
+        ttk.Label(tab, text='1. Add your server account   2. Select it   3. Connect', wraplength=950).pack(anchor='w', pady=6)
         self.tree = ttk.Treeview(tab, columns=('server', 'mode', 'expiry'), show='tree headings', height=7)
         self.tree.heading('#0', text='Profile')
         for name in ('server', 'mode', 'expiry'):
             self.tree.heading(name, text=name.title()); self.tree.column(name, width=170)
         self.tree.pack(fill='both', expand=True, pady=6)
-        line = ttk.Frame(tab); line.pack(fill='x')
-        for label, action in [('New', self.edit), ('Edit', lambda: self.edit(self.selected())),
-                              ('Import JSON', self.import_file), ('Remove', self.remove),
-                              ('Connect', self.connect), ('Disconnect', self.disconnect)]:
-            ttk.Button(line, text=label, command=lambda f=action: self.safe(f)).pack(side='left', padx=3)
-        line = ttk.Frame(tab); line.pack(fill='x', pady=8)
-        for label, action in [('SSH account providers ↗', lambda: webbrowser.open(ssh.SERVERS_URL)),
-            ('Setup guide ↗', lambda: webbrowser.open(ssh.GUIDE_URL)),
-            ('Download routing core', lambda: self.run(self.routing.install, lambda _: self.status.set('Verified routing core downloaded. No routes changed.'))),
-            ('Check routing config', lambda: self.run(self.routing.check, lambda _: self.status.set('Routing configuration accepted. No routes changed.')))]:
-            ttk.Button(line, text=label, command=lambda f=action: self.safe(f)).pack(side='left', padx=3)
-        self.status = tk.StringVar(value='Disconnected. No system proxy or DNS settings changed.')
-        self.rates = tk.StringVar(value='↓ 0 KB/s    ↑ 0 KB/s')
-        ttk.Label(tab, textvariable=self.status, wraplength=950).pack(anchor='w', pady=6)
-        ttk.Label(tab, textvariable=self.rates, font=('Segoe UI', 16)).pack(anchor='w')
-        ttk.Label(tab, text='Whole-PC mode tunnels TCP and DNS over HTTPS; other UDP/ICMP is blocked. Closing NetCroc stops this tunnel.\nThis feature does not establish free ISP data, a speed increase, or a verified provider connection.', wraplength=950).pack(anchor='w', pady=8)
+        self.tree.bind('<<TreeviewSelect>>', lambda _event: self._update_buttons())
+        self.empty_hint = ttk.Label(tab, text='', style='Muted.TLabel', wraplength=900)
+        self.bar = actions(tab, [(self.ADD_LABEL, lambda: self.safe(self.edit)), ('Connect', lambda: self.safe(self.connect)), ('Disconnect', lambda: self.safe(self.disconnect))], [
+            ('Edit selected', lambda: self.safe(lambda: self.edit(self.selected()))), ('Import account file', lambda: self.safe(self.import_file)), ('Remove selected', lambda: self.safe(self.remove)),
+            ('Get an account', lambda: webbrowser.open(ssh.SERVERS_URL)),
+            ('Install / repair core', lambda: self.safe(lambda: self.run(self.routing.install, lambda _: self.line.ok('Core ready.')))),
+            ('Check routing configuration', lambda: self.safe(lambda: self.run(self.routing.check, lambda _: self.line.ok('Configuration accepted.')))),
+            ('Verify public IP', lambda: self.safe(self.check_ip)),
+            ('How to use SSH / TLS', help_for(self.root, 'SSH / TLS', 'Use an account from your provider. Its host, credentials and TLS settings must match the server. Local SOCKS5 only affects configured apps. Whole-PC mode tunnels TCP and DNS; other UDP/ICMP is blocked. No speed increase or free ISP data is guaranteed.'))])
+        self.line = StatusLine(tab, 'Disconnected. No system proxy or DNS settings changed.')
+        self.status = self.line.var
+        self.rates = tk.StringVar(value='')
+        self.rates_label = ttk.Label(tab, textvariable=self.rates, font=('Segoe UI', 16))
+        ttk.Label(tab, text='Closing NetCroc stops this tunnel.', style='Muted.TLabel').pack(anchor='w', pady=6)
+        self._apply_empty(0)
         if not diagnostic:
             self.refresh()
+        self._update_buttons()
         self.timer = self.root.after(1000, self.poll)
 
     def safe(self, action):
@@ -57,22 +65,57 @@ class SSHTab:
         except Exception as error:
             messagebox.showerror('SSH / TLS', ssh.friendly_error(error), parent=self.root)
 
+    PROFILE_NOUN = 'SSH profile'
+
     def selected(self):
         value = self.tree.selection()
         if not value:
-            raise ValueError('Choose an SSH profile first.')
+            raise ValueError('Choose a ' + self.PROFILE_NOUN + ' first.')
         return value[0]
 
     def refresh(self):
+        selected = self.tree.selection()
         self.tree.delete(*self.tree.get_children())
-        for identifier, item in self.store.profiles():
+        items = list(self.store.profiles())
+        for identifier, item in items:
             self.tree.insert('', 'end', iid=identifier, text=item['label'], values=(
                 f"{item['host']}:{item['port']}", 'Whole-PC TCP' if item['routing'] == 'tun' else 'Local SOCKS5', item['expires'] or 'Not supplied'))
+        if selected and self.tree.exists(selected[0]):
+            self.tree.selection_set(selected[0])
+        self._apply_empty(len(items))
+        self._update_buttons()
 
-    def run(self, action, callback):
+    def _apply_empty(self, count):
+        self.tree.configure(height=7 if count else 3)
+        self.tree.pack_configure(expand=bool(count))
+        if count:
+            self.empty_hint.pack_forget()
+        else:
+            self.empty_hint.configure(text='No saved profiles yet. Use "' + self.ADD_LABEL + '" to add one, then select it and Connect.')
+            self.empty_hint.pack(anchor='w', pady=(0, 8), before=self.bar.bar)
+
+    def _update_buttons(self):
+        live = bool(self.session and not self.session.cancel.is_set())
+        idle = not self.busy and not self.stopping
+        chosen = bool(self.tree.selection())
+        self.bar.set_enabled({
+            'Connect': idle and chosen and not live,
+            'Disconnect': idle and live,
+            self.ADD_LABEL: idle,
+        })
+        if live:
+            self.bar.set_primary('Disconnect')
+        elif chosen:
+            self.bar.set_primary('Connect')
+        else:
+            self.bar.set_primary(self.ADD_LABEL)
+
+    def run(self, action, callback, message='Working…'):
         if self.busy:
-            raise ValueError('Wait for the current SSH action to finish, or disconnect.')
+            raise ValueError('Wait for the current action to finish, or disconnect.')
         self.busy = True
+        self.line.busy(message)
+        self._update_buttons()
         def work():
             try:
                 self.events.put((callback, action(), None))
@@ -93,30 +136,66 @@ class SSHTab:
             self.store.remove(identifier); self.refresh()
 
     def connect(self):
-        vless_tab=getattr(self.app.dashboard,'vless_tab',None)
+        vless_tab = getattr(self.app.dashboard, 'vless_tab', None)
         if vless_tab and vless_tab.session and not vless_tab.session.cancel.is_set():
             raise ValueError('Disconnect VLESS before connecting SSH.')
-        if self.busy or (self.session and not self.session.cancel.is_set()):
+        if self.busy or self.stopping or (self.session and not self.session.cancel.is_set()):
             raise ValueError('Disconnect the current session before connecting another profile.')
         identifier = self.selected(); value = self.store.load(identifier)
         ssh.validate(value, credentials=True)
-        if value['routing'] == 'tun' and not messagebox.askyesno('Whole-PC TCP',
-            'This changes PC-wide routing and may interrupt remote access. UDP apps may stop working. Connect now?', default='no'):
+        if value['routing'] == 'tun' and not messagebox.askyesno('Whole-PC TCP' + _TUN_TAG,
+            'This mode changes PC-wide routing and may interrupt remote access. UDP apps may stop working.' + (' It is experimental on this platform.' if _TUN_TAG else '') + ' Connect now?', default='no'):
             return
         self.session = ssh.Session(self.routing if value['routing'] == 'tun' else None)
         session = self.session
         self.previous = (0, 0)
         self.previous_time = time.monotonic()
-        self.status.set('Connecting…')
-        self.run(lambda: session.start(value, identifier), lambda result: self.status.set(result['status']))
+        def done(result):
+            self.line.ok(result['status'] + (' · SOCKS5 127.0.0.1:' + str(result['port']) if result['port'] else ''))
+            self.rates_label.pack(anchor='w')
+            self._update_buttons()
+        self.run(lambda: session.start(value, identifier), done, 'Connecting to ' + value['host'] + '…')
 
-    def disconnect(self):
-        if self.session:
-            session = self.session
-            session.cancel.set()
-            # Closing sockets interrupts a pending handshake; cleanup may take a moment.
-            threading.Thread(target=session.stop, daemon=True).start()
-            self.status.set('Disconnecting…')
+    def disconnect(self, notice=None):
+        if not self.session or self.stopping:
+            return
+        session = self.session
+        self.session = None
+        self._stop_notice = notice
+        session.cancel.set()
+        self.stopping = threading.Thread(target=self._stop_worker, args=(session,), daemon=True)
+        self.stopping.start()
+        self.line.busy('Disconnecting…')
+        self.rates_label.pack_forget()
+        self._update_buttons()
+
+    def _stop_worker(self, session):
+        try:
+            session.stop(); outcome = None
+        except Exception as failure:
+            outcome = ssh.friendly_error(failure)
+        self.events.put((self._stop_done, outcome, None))
+
+    def _stop_done(self, outcome):
+        self.stopping = None
+        notice = getattr(self, '_stop_notice', None); self._stop_notice = None
+        self.line.stop_busy()
+        if outcome:
+            self.line.error('Disconnect incomplete: ' + outcome + ' Routes or the listener may still be active. Retry Disconnect or close NetCroc.')
+            messagebox.showerror('SSH / TLS', 'Disconnect incomplete: ' + outcome, parent=self.root)
+        else:
+            self.line.info('Disconnected.' + (' ' + notice if notice else ''))
+        self._update_buttons()
+
+    def check_ip(self):
+        if not self.session or not self.session.started:
+            raise ValueError('Connect a profile first.')
+        value = self.store.load(self.session.profile_id)
+        if value['routing'] == 'tun':
+            self.app.dashboard.check_vpn_ip(); return
+        from .vless import proxy_ip
+        port = self.session.socks.port if self.session.socks else value['local_port']
+        self.run(lambda: proxy_ip(port), lambda ip: self.line.ok('Verified proxy public IP: ' + ip + ' · not a DNS/IPv6 leak test.'), 'Checking the public IP through the tunnel…')
 
     def edit(self, identifier=None):
         value = self.store.load(identifier) if identifier else dict(ssh.DEFAULTS)
@@ -149,6 +228,9 @@ class SSHTab:
                 if len(raw) > 65536: raise ValueError('CA file is too large.')
                 ca[0] = raw.decode('ascii')
         ttk.Button(tls, text='Import custom CA PEM', command=lambda: self.safe(import_ca)).grid(row=5, column=0, sticky='w')
+        variables['ca_only'] = tk.BooleanVar(value=value['ca_only'])
+        ttk.Checkbutton(tls, text='Trust only the custom CA (ignore system CAs)', variable=variables['ca_only']).grid(row=6, column=0, columnspan=2, sticky='w', pady=(10, 0))
+        ttk.Label(tls, text='Unchecked: system CAs plus your custom CA are trusted.\nChecked: only your custom CA is trusted; a certificate signed by any other CA is refused.', wraplength=600).grid(row=7, column=0, columnspan=2, sticky='w', pady=6)
         payload = page('Payload and proxy')
         for row, (field, title) in enumerate([('proxy_host', 'HTTP proxy host (optional)'), ('proxy_port', 'HTTP proxy port'), ('proxy_user', 'Proxy username'), ('proxy_password', 'Proxy password')]):
             entry(payload, row, field, title, field == 'proxy_password')
@@ -160,8 +242,10 @@ class SSHTab:
         entry(route, 0, 'local_port', 'Local SOCKS5 port (0 = automatic)')
         variables['routing'] = tk.StringVar(value=value['routing'])
         ttk.Radiobutton(route, text='Local SOCKS5 — configure your app to use 127.0.0.1 and this port', value='socks', variable=variables['routing']).grid(row=1, column=0, columnspan=2, sticky='w', pady=12)
-        ttk.Radiobutton(route, text='Whole-PC TCP — optional core + administrator required', value='tun', variable=variables['routing']).grid(row=2, column=0, columnspan=2, sticky='w')
+        ttk.Radiobutton(route, text='Whole-PC TCP' + _TUN_TAG + ' — optional core + administrator required', value='tun', variable=variables['routing']).grid(row=2, column=0, columnspan=2, sticky='w')
         ttk.Label(route, text='No automatic system proxy changes. SOCKS domain names resolve at the SSH server.\nWhole-PC mode sends DNS through the tunnel and blocks other UDP/ICMP.\nDisconnect before connecting another VPN.', wraplength=600).grid(row=3, column=0, columnspan=2, sticky='w', pady=15)
+        entry(route, 4, 'idle_timeout', 'Idle timeout seconds (0 = keep alive)')
+        ttk.Label(route, text='0 keeps long-running and idle connections open (TCP keepalive detects dead peers).\nA positive value closes a connection after that many seconds without traffic.', wraplength=600).grid(row=5, column=0, columnspan=2, sticky='w', pady=6)
         def collect():
             result = value | {field: variable.get() for field, variable in variables.items()}
             result.update({field: widget.get('1.0', 'end-1c') for field, widget in texts.items()})
@@ -190,22 +274,32 @@ class SSHTab:
     def poll(self):
         if self.closed: return
         while not self.events.empty():
-            callback, value, error = self.events.get(); self.busy = False
+            callback, value, error = self.events.get()
+            self.busy = False
+            self.line.stop_busy()
             if error:
-                self.status.set(error); messagebox.showerror('SSH / TLS', error, parent=self.root)
+                self.line.error(error); messagebox.showerror('SSH / TLS', error, parent=self.root)
             else:
                 self.safe(lambda: callback(value))
-        if self.session:
+            self._update_buttons()
+        if self.session and self.session.started and not self.line.has_error:
             state = self.session.snapshot()
-            self.status.set(state['status'] + (f" · SOCKS5 127.0.0.1:{state['port']}" if not self.session.cancel.is_set() and state['port'] else ''))
-            down, up = state['down'], state['up']
-            now = time.monotonic(); elapsed = max(.001, now-self.previous_time)
-            self.rates.set('↓ ' + speed(max(0, down-self.previous[0])/elapsed) + '    ↑ ' + speed(max(0, up-self.previous[1])/elapsed))
-            self.previous = (down, up)
-            self.previous_time = now
+            if self.session.cancel.is_set():
+                self.line.error(state['status'] + ' · the tunnel closed unexpectedly.')
+                self.rates_label.pack_forget()
+            else:
+                self.line.ok(state['status'] + (f" · SOCKS5 127.0.0.1:{state['port']}" if state['port'] else ''))
+                down, up = state['down'], state['up']
+                now = time.monotonic(); elapsed = max(.001, now-self.previous_time)
+                self.rates.set('↓ ' + speed(max(0, down-self.previous[0])/elapsed) + '    ↑ ' + speed(max(0, up-self.previous[1])/elapsed))
+                self.previous = (down, up)
+                self.previous_time = now
         self.timer = self.root.after(1000, self.poll)
 
     def close(self):
         self.closed = True
         self.root.after_cancel(self.timer)
-        if self.session: self.session.stop()
+        if self.stopping: self.stopping.join(timeout=5)
+        if self.session:
+            try: self.session.stop()
+            except Exception: pass
