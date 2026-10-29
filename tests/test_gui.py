@@ -132,7 +132,7 @@ finally:app.quit()
         tab=self.app.dashboard
         item=lambda name,connected:dict(profile=name,connected=connected,password='synthetic',auth='test',interface=SimpleNamespace(description='test'))
         tab.events.put(('wifi',[item('Z network',True),item('A network',False)]));tab.poll()
-        self.assertEqual(tuple(tab.wifi_table['columns']),('Network','Status','Password'))
+        self.assertEqual(tuple(tab.wifi_table['columns']),('Network','Status','Password','Copy'))
         self.assertEqual(tab.visible_profiles[0]['profile'],'Z network')
         tab.wifi_search.set('a network')
         self.assertEqual(len(tab.wifi_table.get_children()),1)
@@ -152,6 +152,99 @@ finally:app.quit()
         self.assertEqual(tab.history_empty.winfo_manager(),'')
         self.assertEqual(len(tab.history_table.get_children()),1)
         self.assertEqual(tab.bars.winfo_manager(),'pack')
+
+    def test_wifi_copy_cell_uses_only_clicked_row(self):
+        from types import SimpleNamespace
+        tab=self.app.dashboard
+        tab.visible_profiles=[{'password':'first-test-key'},{'password':'second-test-key'}]
+        with patch.object(tab.wifi_table,'identify_column',return_value='#4'), \
+             patch.object(tab.wifi_table,'identify_row',return_value='row'), \
+             patch.object(tab.wifi_table,'index',return_value=1), \
+             patch.object(self.root,'clipboard_clear'),patch.object(self.root,'clipboard_append') as copy:
+            tab.copy_wifi_cell(SimpleNamespace(x=1,y=1))
+            copy.assert_called_once_with('second-test-key')
+
+    def test_vless_paste_validates_before_saving_and_never_connects(self):
+        tab=self.app.dashboard.vless_tab
+        with patch.object(tab.store,'save',return_value='id') as save,patch.object(tab,'refresh'),patch.object(tab,'connect') as connect:
+            tab.paste_links();tab.paste_input.insert('1.0','vless://bad');tab.paste_save();save.assert_not_called()
+            tab.paste_input.delete('1.0','end')
+            tab.paste_input.insert('1.0','vless://00000000-0000-4000-8000-000000000001@server.example:443?security=tls&type=tcp#Test')
+            tab.paste_save();save.assert_called_once();connect.assert_not_called()
+            self.assertFalse(tab.paste_dialog.winfo_exists())
+
+    def test_retry_app_tracking_requests_capture_restart(self):
+        from unittest.mock import patch
+        with patch('netcroc.platforms.admin',return_value=True),patch('netcroc.ui.os.name','nt'),patch.object(self.app.shell,'open') as opened:
+            self.app.enable_app_tracking()
+            self.assertTrue(self.app.dashboard.capture_retry.is_set())
+            self.assertIn('Retrying',self.app.dashboard.capture_status.get())
+            opened.assert_called_once_with('Live traffic')
+
+    def test_tunnel_buttons_reflect_selection_and_session(self):
+        for tab in (self.app.dashboard.ssh_tab, self.app.dashboard.vless_tab):
+            self.assertEqual(str(tab.bar.buttons['Connect']['state']), 'disabled')
+            self.assertEqual(str(tab.bar.buttons['Disconnect']['state']), 'disabled')
+        tab = self.app.dashboard.ssh_tab
+        tab.tree.insert('', 'end', iid='a' * 32, text='Synthetic', values=('h:443', 'Local SOCKS5', ''))
+        tab.tree.selection_set('a' * 32); tab._update_buttons()
+        self.assertEqual(str(tab.bar.buttons['Connect']['state']), 'normal')
+        self.assertEqual(str(tab.bar.buttons['Disconnect']['state']), 'disabled')
+        class LiveSession:
+            cancel = threading.Event(); started = 1
+        tab.session = LiveSession(); tab._update_buttons()
+        self.assertEqual(str(tab.bar.buttons['Connect']['state']), 'disabled')
+        self.assertEqual(str(tab.bar.buttons['Disconnect']['state']), 'normal')
+        tab.session = None; tab.tree.delete('a' * 32); tab._update_buttons()
+
+    def test_failed_disconnect_is_reported_not_silently_disconnected(self):
+        tab = self.app.dashboard.ssh_tab
+        class BadSession:
+            cancel = threading.Event()
+            def stop(self): raise OSError('Routing recovery is still pending.')
+        tab.session = BadSession()
+        with patch('netcroc.ssh_ui.messagebox.showerror') as dialog:
+            tab.disconnect()
+            tab.stopping.join(timeout=5)
+            tab.poll()
+            dialog.assert_called_once()
+        self.assertTrue(tab.line.has_error)
+        self.assertIn('Disconnect incomplete', tab.status.get())
+        self.assertIsNone(tab.session)
+
+    def test_vless_health_drop_disconnects_off_the_gui_thread(self):
+        tab = self.app.dashboard.vless_tab
+        worker_threads = []
+        class DyingSession:
+            cancel = threading.Event(); active = True; profile_id = None
+            def healthy(self): return False
+            def stop(self): worker_threads.append(threading.current_thread() is not threading.main_thread())
+        tab.session = DyingSession()
+        tab.poll()
+        self.assertIsNotNone(tab.stopping)
+        tab.stopping.join(timeout=5)
+        self.assertEqual(worker_threads, [True])
+
+    def test_stale_vpn_selection_raises_valueerror_not_stopiteration(self):
+        dash = self.app.dashboard
+        dash.vpn_table.insert('', 'end', iid='b' * 32, values=('Gone', 'h:1', 'r', 'stopped', '—'))
+        dash.vpn_table.selection_set('b' * 32)
+        dash.vpn_profiles = []
+        with self.assertRaises(ValueError):
+            dash.selected_vpn()
+        dash.vpn_table.delete('b' * 32)
+
+    def test_status_error_survives_live_poll(self):
+        tab = self.app.dashboard.ssh_tab
+        tab.line.error('Synthetic failure')
+        class FakeSession:
+            cancel = threading.Event(); started = 1
+            def snapshot(self): return {'status': 'Connected', 'port': 1080, 'down': 0, 'up': 0}
+        tab.session = FakeSession()
+        tab.poll()
+        self.assertTrue(tab.line.has_error)
+        self.assertIn('Synthetic failure', tab.status.get())
+        tab.session = None
 
     def test_auto_isp_waits_before_starting_and_manual_override_wins(self):
         self.app.isp.set('Airtel')
