@@ -3,7 +3,7 @@ import json
 import re
 import urllib.request
 
-VERSION='0.4.0-beta.3+dev'
+VERSION='0.4.6'
 REPO='https://github.com/4Raisan/NetCroc'
 API='https://api.github.com/repos/4Raisan/NetCroc/releases?per_page=30'
 

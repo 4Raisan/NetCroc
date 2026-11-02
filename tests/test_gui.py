@@ -589,4 +589,14 @@ finally:app.quit()
         shell.about.summary.set('No newer release found');self.root.update_idletasks()
         self.assertEqual(shell.update_button.winfo_manager(),'')
 
+    def test_reopening_gui_checks_for_updates_each_time(self):
+        with patch.object(self.app.shell.about,'check') as check:
+            self.app.diagnostic=False
+            try:
+                self.app.show();self.root.withdraw();self.app.show()
+                self.assertEqual(check.call_count,2)
+            finally:self.app.diagnostic=True
+            self.app.show()
+            self.assertEqual(check.call_count,2)
+
 if __name__=='__main__':unittest.main()

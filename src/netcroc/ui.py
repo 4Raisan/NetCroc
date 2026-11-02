@@ -5,7 +5,6 @@ import queue
 import sys
 import threading
 import tkinter as tk
-import webbrowser
 from tkinter import ttk, messagebox
 from PIL import Image, ImageDraw
 import pystray
@@ -45,7 +44,9 @@ class App:
         self.events = queue.Queue()
         self.stop_event = None
         self.worker = None
+        self.compare_worker = None
         self.tray = None
+        self._tray_title = None
         self.running = False
         self.comparing = False
         self.compare_stop = threading.Event()
@@ -127,10 +128,6 @@ class App:
         ttk.Button(buttons, text='Pause', command=self.pause).pack(side='left', padx=6)
         ttk.Button(buttons, text='Compare OFF / ON…', command=self.compare_window).pack(side='left', padx=6)
         self.log = tk.Text(outer, height=5, state='disabled', font=('Consolas', 9))
-        footer = ttk.Frame(outer)
-        footer.pack(side='bottom', fill='x', pady=(12, 0))
-        ttk.Button(footer, text='GitHub ↗', command=lambda: webbrowser.open('https://github.com/4Raisan/NetCroc')).pack(side='left')
-        ttk.Label(footer, text='Local monitoring · Optional WireGuard VPN', font=('Segoe UI', 9)).pack(side='right')
         self.toggle_details()
         from .dashboard import Dashboard
         self.dashboard = Dashboard(self, notebook, diagnostic)
@@ -270,7 +267,7 @@ class App:
 
     def toggle_details(self):
         if self.details.get():
-            self.log.pack(fill='x', pady=(12, 0), before=self.log.master.winfo_children()[-1])
+            self.log.pack(fill='x', pady=(12, 0))
         else:
             self.log.pack_forget()
 
@@ -395,10 +392,17 @@ class App:
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
+        if not self.diagnostic:self.shell.about.check()
+
+    def set_tray_title(self, title):
+        # pystray pushes an OS tooltip on every assignment; skip identical values so an idle
+        # tray is not re-rendered on each per-second live tick.
+        if self.tray and title != self._tray_title:
+            self.tray.title = title; self._tray_title = title
 
     def update_tray(self, good=None):
         if self.tray:
-            self.tray.title = 'NetCroc · ' + ('Running' if self.running else 'Paused')
+            self.set_tray_title('NetCroc · ' + ('Running' if self.running else 'Paused'))
             self.tray.icon = icon_image('#34d399' if self.running and good is not False else '#94a3b8')
             self.tray.update_menu()
 
@@ -464,6 +468,11 @@ class App:
         self.compare_stop.set()
         if self.stop_event:
             self.stop_event.set()
+        # Let the monitor and comparison loops observe the stop flags and finish before the
+        # windows (and their Tk references) are torn down. Bounded so a blocked call cannot hang quit.
+        for thread in (self.worker, self.compare_worker):
+            if thread and thread.is_alive():
+                thread.join(timeout=6)
         if self.tray:
             self.tray.stop()
         self.window.close()
