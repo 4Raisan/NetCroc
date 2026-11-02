@@ -30,7 +30,7 @@ class Preferences:
             valid = (isinstance(value, bool) if isinstance(default, bool) else
                      value in MODES if key == 'overlay_mode' else
                      type(value) is int and 320 <= value <= 680 if key == 'overlay_width' else
-                     value in ('Light','Mint','Sand') if key == 'theme' else
+                     value in ('Light','Mint','Sand','Dark','Graphite','Slate') if key == 'theme' else
                      isinstance(value, (int, float)) and .65 <= value <= 1 if key == 'overlay_alpha' else
                      type(value) is int and value in (0, 1, 5) if key == 'usage_minimum_mb' else
                      value is None or isinstance(value, list) and len(value) == 2 and all(type(n) is int and abs(n) <= 100000 for n in value))
@@ -103,12 +103,26 @@ class WindowChrome:
         self.root.overrideredirect(True)
         self.root.bind('<Map>', self.mapped, add='+')
         self.root.bind('<Configure>', self.round_window, add='+')
+        self.fit_job=self.root.after(1000,self.fit_workspace)
         self.region_size = None
         self.job = self.root.after_idle(self.taskbar)
         grip = ttk.Sizegrip(self.root)
         grip.place(relx=1, rely=1, x=-9, y=-9, anchor='se', width=16, height=16)
         grip.bind('<ButtonPress-1>', self.resize_start)
         grip.bind('<B1-Motion>', self.resize)
+
+    def fit_workspace(self):
+        if self.app.closing:return
+        try:
+            left,top,right,bottom=monitor_rect(self.root,(self.root.winfo_rootx()+40,self.root.winfo_rooty()+40))
+            available=(right-left,bottom-top)
+            self.root.minsize(min(900,available[0]),min(620,available[1]))
+            width=min(self.root.winfo_width(),available[0]);height=min(self.root.winfo_height(),available[1])
+            x=max(left,min(self.root.winfo_rootx(),right-width));y=max(top,min(self.root.winfo_rooty(),bottom-height))
+            if (width,height,x,y)!=(self.root.winfo_width(),self.root.winfo_height(),self.root.winfo_rootx(),self.root.winfo_rooty()):
+                position_window(self.root,(width,height),(x,y))
+        except tk.TclError:return
+        self.fit_job=self.root.after(1500,self.fit_workspace)
 
     @staticmethod
     def set_round_region(hwnd, width, height, diameter):
@@ -209,6 +223,8 @@ class WindowChrome:
         self.root.geometry(f'{max(minimum[0],width+event.x_root-x)}x{max(minimum[1],height+event.y_root-y)}')
 
     def close(self):
+        if getattr(self,'fit_job',None):
+            self.root.after_cancel(self.fit_job);self.fit_job=None
         if self.job:
             try:self.root.after_cancel(self.job)
             except tk.TclError:pass
