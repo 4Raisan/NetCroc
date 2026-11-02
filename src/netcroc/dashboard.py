@@ -197,8 +197,6 @@ class Dashboard:
         self.history_enable=ttk.Button(self.history_empty,text='Retry app tracking',command=self.app.enable_app_tracking)
         ttk.Button(self.history_empty,text='See network totals',command=self.show_network_history).pack(anchor='w',pady=8)
         self.history_precision=tk.StringVar(value='Missing history is unknown, not zero usage.')
-        self.history_footer=ttk.Label(tab,text='Only usage recorded while NetCroc is running appears here. Recorded data is kept for 62 days; older days are removed automatically.',style='Muted.TLabel',wraplength=740)
-        self.history_footer.pack(side='bottom',fill='x',pady=4,before=self.history_body)
         self.history_body.bind('<Configure>',self.resize_history)
         self.bars.bind('<Configure>',lambda _event:self.draw_history_bars())
 
@@ -269,10 +267,10 @@ class Dashboard:
         except (ValueError,OSError) as error: messagebox.showerror('History',str(error))
 
     def resize_history(self,event):
-        self.bars.configure(height=min(180,max(96,event.height//3)))
+        self.bars.configure(height=96)
 
     def draw_history_bars(self):
-        self.bars.delete('all');items=getattr(self,'history_chart_rows',[])[:6]
+        self.bars.delete('all');items=sorted(getattr(self,'history_chart_rows',[]),key=lambda item:item[1]+item[2],reverse=True)[:3]
         width=max(260,self.bars.winfo_width());height=max(80,self.bars.winfo_height())
         label_width=min(230,max(100,int(width*.28)));maximum=max([d+u for _,d,u in items] or [1]) or 1
         step=min(28,max(13,(height-14)//max(1,len(items))))
@@ -283,9 +281,9 @@ class Dashboard:
             while label and measure.measure(label)>label_width-16:label=label[:-1]
             if label!=name:label=label[:-1]+'…'
             y=7+index*step;length=max(0,width-label_width-110)*(down+up)/maximum
-            self.bars.create_text(8,y+step/2,text=label,fill='#294638',anchor='w',font=('Segoe UI',9))
+            self.bars.create_text(8,y+step/2,text=label,fill=getattr(self,'chart_text','#294638'),anchor='w',font=('Segoe UI',9))
             self.bars.create_rectangle(label_width,y+2,label_width+length,y+step-2,fill='#20a779',outline='')
-            self.bars.create_text(label_width+length+6,y+step/2,text=volume(down+up),fill='#294638',anchor='w',font=('Segoe UI',8))
+            self.bars.create_text(label_width+length+6,y+step/2,text=volume(down+up),fill=getattr(self,'chart_text','#294638'),anchor='w',font=('Segoe UI',8))
 
     def history_details(self):
         selected=self.history_table.selection()

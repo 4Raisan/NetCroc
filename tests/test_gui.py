@@ -72,7 +72,6 @@ try:
     tab.history.record([('app','test','chrome.exe',2*1024**2,0)],1)
     tab.group.set('Applications');app.shell.show('Usage');root.update()
     assert tab.bars.winfo_y()+tab.bars.winfo_height()<=tab.history_body.winfo_height()
-    assert tab.history_footer.winfo_y()+tab.history_footer.winfo_height()<=tab.tab_history.winfo_height()
     assert root.overrideredirect()
     app.window.maximize();root.update();assert app.window.maximized
     app.window.maximize();root.update();assert not app.window.maximized
@@ -556,5 +555,38 @@ finally:app.quit()
                 dashboard.vpn_action('connect')
                 self.assertTrue(showerror.called,tab_name)
                 confirm.assert_not_called();connect.assert_not_called()
+
+    def test_simplified_pages_and_dark_themes(self):
+        def texts(widget):
+            result=[]
+            for child in widget.winfo_children():
+                try:result.append(str(child.cget('text')))
+                except tk.TclError:pass
+                result.extend(texts(child))
+            return result
+        shell=self.app.shell;dashboard=self.app.dashboard
+        self.assertNotIn('Check setup',texts(shell.primary['Home']))
+        self.assertIn('Check setup',texts(shell.sidebar))
+        live=texts(dashboard.tab_live)
+        self.assertNotIn('Tracking details',live)
+        self.assertEqual(sum(t in ('Retry app tracking','Enable app tracking') for t in live),1)
+        self.assertNotIn('More options',texts(shell.primary['Tray mode']))
+        for theme in ('Dark','Slate','Light'):
+            shell.theme_var.set(theme);shell.apply_theme()
+            self.assertEqual(dashboard.graph.cget('background'),shell.palette['card'])
+        shell.theme_var.set('Graphite');shell.apply_theme()
+        style=__import__('tkinter').ttk.Style(self.root)
+        self.assertEqual(style.map('TCombobox','fieldbackground')[0][-1],shell.palette['field'])
+        self.assertEqual(dashboard.history_table.tag_configure('alternate')['background'],shell.palette['stripe'])
+        dashboard.history_chart_rows=[(str(i),i*1000,0) for i in range(8)]
+        dashboard.draw_history_bars()
+        rectangles=[i for i in dashboard.bars.find_all() if dashboard.bars.type(i)=='rectangle']
+        self.assertEqual(len(rectangles),3)
+        shell.about.summary.set('Update available: v9.0.0');self.root.update_idletasks()
+        self.assertEqual(shell.update_button.winfo_manager(),'pack')
+        self.assertEqual(shell.update_button.cget('text'),'Update available ↗')
+        self.assertEqual(shell.update_button.cget('style'),'Update.TButton')
+        shell.about.summary.set('No newer release found');self.root.update_idletasks()
+        self.assertEqual(shell.update_button.winfo_manager(),'')
 
 if __name__=='__main__':unittest.main()
