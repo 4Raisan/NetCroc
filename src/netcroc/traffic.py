@@ -79,7 +79,7 @@ class Traffic:
         self.lock=threading.Lock()
         self.pending=defaultdict(lambda:[0,0])
         self.status='Per-app capture requires Run as administrator; adapter totals still work.'
-        self.session=U64(); self.consumer=None; self.closed=False
+        self.session=U64(); self.consumer=None; self.closed=False; self.thread=None
         self.errors=0; self.events=0; self.lost=0
         self.name='NetCroc-'+str(os.getpid())+'-'+uuid.uuid4().hex[:8]
         self.adv=c.WinDLL('advapi32'); self.tdh=c.WinDLL('tdh')
@@ -193,6 +193,11 @@ class Traffic:
         if self.consumer is not None and self.consumer.value != 0xffffffffffffffff:
             self.adv.CloseTrace(self.consumer)
             self.consumer=None
+        # CloseTrace unblocks ProcessTrace; join so the daemon is not still touching ETW
+        # handles once close() returns. Bounded so a wedged kernel call cannot hang shutdown.
+        thread=getattr(self,'thread',None)
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=5)
 
 class Rates:
     """No boot-time totals or counter resets are mistaken for current speed."""
