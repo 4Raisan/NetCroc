@@ -89,32 +89,28 @@ class TrayOverlay:
         ttk.Button(top,text='Go to tray',command=self.app.hide).pack(side='right')
         ttk.Label(card,text='Choose where it appears',style='Card.TLabel').pack(anchor='w',pady=(14,6))
         modes=ttk.Frame(card,style='Card.TFrame');modes.pack(fill='x')
-        for title,mode in [('Left','Left edge'),('Right','Right edge'),('Top','Top middle'),('Floating','Static')]:
+        for title,mode in [('◀ Left','Left edge'),('Right ▶','Right edge'),('▲ Top','Top middle'),('✥ Floating','Static')]:
             ttk.Radiobutton(modes,text=title,variable=self.mode,value=mode,style='Segment.TRadiobutton').pack(side='left',padx=(0,6))
         ttk.Label(card,text='Edge: move your mouse to reveal. Floating: drag it anywhere.',style='Card.TLabel',wraplength=650).pack(anchor='w',pady=(10,0))
         width_row=ttk.Frame(card,style='Card.TFrame');width_row.pack(fill='x',pady=(12,0))
         ttk.Label(width_row,text='Popup width',style='Card.TLabel').pack(side='left')
         self.width_value=ttk.Label(width_row,text=f'{self.width.get()} px',style='Card.TLabel',width=7,anchor='e');self.width_value.pack(side='right')
-        ttk.Scale(width_row,from_=320,to=680,variable=self.width,command=self.width_changed).pack(side='right',fill='x',expand=True,padx=12)
+        sizes={'Compact':320,'Standard':420,'Wide':520}
+        self.size_choice=tk.StringVar(value=next((name for name,value in sizes.items() if value==self.width.get()),'Custom'))
+        size_box=ttk.Combobox(width_row,textvariable=self.size_choice,values=tuple(sizes),state='readonly',width=13)
+        size_box.pack(side='left',padx=12)
+        size_box.bind('<<ComboboxSelected>>',lambda _event:self.width_changed(sizes[self.size_choice.get()]))
         card=ttk.Frame(parent,style='Card.TFrame',padding=16);card.pack(fill='x',pady=(0,12))
         ttk.Label(card,text='Make it yours',style='Card.TLabel',font=('Segoe UI',12,'bold')).pack(anchor='w',pady=(0,8))
         for title,variable in [('Top apps',self.apps),('Wi-Fi & ISP',self.network),('VPN & exit country',self.vpn)]:
             ttk.Checkbutton(card,text=title,variable=variable).pack(anchor='w')
-        more=ttk.Frame(parent)
-        def toggle():
-            if more.winfo_manager():more.pack_forget();button.configure(text='More options')
-            else:more.pack(fill='x',pady=8);button.configure(text='Fewer options')
-        button=ttk.Button(parent,text='More options',command=toggle);button.pack(anchor='w')
+        more=ttk.Frame(parent);more.pack(fill='x',pady=8)
         line=ttk.Frame(more);line.pack(fill='x',pady=4)
         ttk.Label(line,text='Opacity').pack(side='left',padx=(0,10))
         ttk.Combobox(line,textvariable=self.alpha,values=('100%','95%','85%','75%'),state='readonly',width=7).pack(side='left')
         ttk.Button(line,text='Reset position',command=self.reset_position).pack(side='left',padx=12)
         ttk.Checkbutton(more,text='Close button sends NetCroc to tray',variable=self.close_to_tray).pack(anchor='w',pady=6)
-        ttk.Button(more,text='Check exit country',command=self.check_country).pack(anchor='w',pady=6)
-        ttk.Label(more,textvariable=self.status,wraplength=650).pack(anchor='w')
         from .dashboard import info_dialog
-        ttk.Button(more,text='How VPN detection works',command=lambda:info_dialog(self.root,'VPN detection','An active tunnel interface is a hint, not proof of protection. Country is the checked public exit, not a guess from a profile name. App-only proxies may have a different exit. Country lookup uses ipwho.is.')).pack(anchor='w',pady=6)
-        ttk.Button(more,text='Quit NetCroc',command=self.app.quit).pack(anchor='w',pady=6)
 
     def apply(self):
         if self.closed: return
@@ -240,7 +236,8 @@ class TrayOverlay:
                     self.panel.deiconify(); self.visible = True
             elif self.visible:
                 x, y = self.panel.winfo_rootx(), self.panel.winfo_rooty()
-                if x <= point[0] < x+self.panel.winfo_width() and y <= point[1] < y+self.panel.winfo_height(): self.last_inside = now
+                # Only the compact header keeps an edge panel open, leaving its controls reachable.
+                if x <= point[0] < x+self.panel.winfo_width() and y <= point[1] < y+min(48,self.panel.winfo_height()): self.last_inside = now
                 elif now-self.last_inside > .45: self.hide_panel()
         elif self.visible: self.hide_panel()
         self.timer = self.root.after(150 if self.enabled.get() else 400, self.tick)
