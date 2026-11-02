@@ -23,7 +23,12 @@ class Shell:
         style.configure('TFrame', background='#f4f7f5')
         style.configure('TLabel', background='#f4f7f5')
         style.configure('TButton', padding=(12, 6), background='#e8f2ec', borderwidth=0, relief='flat', focusthickness=0)
+        style.configure('Copy.TButton', padding=(2, 1), font=('Segoe UI Symbol', 10), width=2)
         style.configure('TCombobox', padding=6, fieldbackground='white', bordercolor='#dce6e0', arrowsize=14)
+        style.configure('Theme.TCombobox', padding=(8,5), fieldbackground='white', background='white',
+                        bordercolor='#d6e3dc', arrowsize=13)
+        style.map('Theme.TCombobox', fieldbackground=[('readonly','white'),('focus','white')],
+                  foreground=[('readonly','#18372c')])
         style.layout('Segment.TRadiobutton', [('Toolbutton.border', {'sticky':'nswe','children':[('Toolbutton.padding',{'sticky':'nswe','children':[('Toolbutton.label',{'sticky':'nswe'})]})]})])
         style.configure('Segment.TRadiobutton', padding=(10,7),background='#e9efec',borderwidth=0)
         style.map('Segment.TRadiobutton',background=[('selected','#d4ecdf'),('active','#e0eae4')],foreground=[('selected','#0e6041')])
@@ -104,12 +109,12 @@ class Shell:
         from .updates import VERSION,REPO
         import webbrowser
         foot=ttk.Frame(self.sidebar,style='Sidebar.TFrame');foot.pack(side='bottom',fill='x',padx=10,pady=(0,4))
-        ttk.Label(foot,text='Theme',style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
+        ttk.Label(foot,text='Appearance',style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
         self.theme_var=tk.StringVar(value=self.app.desktop.data['theme'])
-        themes=ttk.Combobox(foot,textvariable=self.theme_var,values=('Light','Mint','Sand'),state='readonly',width=13)
+        themes=ttk.Combobox(foot,textvariable=self.theme_var,values=('Light','Mint','Sand'),state='readonly',width=13,style='Theme.TCombobox')
         themes.pack(fill='x');themes.bind('<<ComboboxSelected>>',lambda _event:self.apply_theme())
-        ttk.Button(foot,text='Star on GitHub',style='ToolNav.TButton',command=lambda:webbrowser.open(REPO)).pack(fill='x')
-        ttk.Label(foot,text='Version '+VERSION,style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
+        ttk.Button(foot,text='★  Star on GitHub',style='ToolNav.TButton',command=lambda:webbrowser.open(REPO)).pack(fill='x',pady=(3,1))
+        ttk.Label(foot,text='NetCroc · v'+VERSION,style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
         self.update_button=ttk.Button(foot,text='Update available',style='Primary.TButton',command=lambda:webbrowser.open(REPO+'/releases'))
         ttk.Label(foot,textvariable=self.about.summary,style='Sidebar.TLabel',wraplength=155,font=('Segoe UI',8)).pack(anchor='w')
         def update_badge(*_):
@@ -146,6 +151,7 @@ class Shell:
         name=self.theme_var.get();base,side,card=palette[name];style=ttk.Style(self.app.root)
         for name_ in ('.','TFrame','TLabel'):style.configure(name_,background=base)
         style.configure('Sidebar.TFrame',background=side);style.configure('Sidebar.TLabel',background=side)
+        style.configure('Theme.TCombobox',fieldbackground=card,background=card,bordercolor=side)
         style.configure('Nav.TButton',background=side);style.configure('ToolNav.TButton',background=side)
         style.configure('Card.TFrame',background=card);style.configure('Card.TLabel',background=card)
         self.app.desktop.update({'theme':name})

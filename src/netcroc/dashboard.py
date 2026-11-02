@@ -132,6 +132,18 @@ class Dashboard:
         if os.name=='nt' and not admin():
             ttk.Button(tab,text='Enable app tracking',command=self.app.enable_app_tracking).pack(anchor='w')
         self.apps=table(tab,('Application','Download /s','Upload /s','Observed total'),[450,150,150,150])
+        self.live_total_desc=True
+        self.live_app_rows=[]
+        self.apps.heading('Observed total',text='Observed total ↓',command=self.toggle_live_total_sort)
+
+    def toggle_live_total_sort(self):
+        self.live_total_desc=not self.live_total_desc
+        self.apps.heading('Observed total',text='Observed total '+('↓' if self.live_total_desc else '↑'),command=self.toggle_live_total_sort)
+        self.render_live_apps()
+
+    def render_live_apps(self):
+        self.live_app_rows.sort(key=lambda item:item[4],reverse=self.live_total_desc)
+        rows(self.apps,[item[:4] for item in self.live_app_rows])
 
 
     def build_history(self):
@@ -366,9 +378,16 @@ class Dashboard:
         ttk.Label(search,text='Find a network').pack(side='left',padx=(0,8))
         ttk.Entry(search,textvariable=self.wifi_search).pack(side='left',fill='x',expand=True)
         self.wifi_search.trace_add('write',lambda *_:self.render_wifi())
-        self.visible_profiles=[]
-        self.wifi_table=table(tab,('Network','Status','Password','Copy'),[390,120,230,65])
-        self.wifi_table.bind('<ButtonRelease-1>',self.copy_wifi_cell)
+        self.visible_profiles=[];self.selected_wifi_index=None;self.wifi_rows=[]
+        listing=ttk.Frame(tab);listing.pack(fill='both',expand=True,pady=8)
+        self.wifi_canvas=tk.Canvas(listing,highlightthickness=0,borderwidth=0)
+        scrollbar=ttk.Scrollbar(listing,orient='vertical',command=self.wifi_canvas.yview)
+        self.wifi_canvas.configure(yscrollcommand=scrollbar.set)
+        self.wifi_canvas.pack(side='left',fill='both',expand=True);scrollbar.pack(side='right',fill='y')
+        self.wifi_list=ttk.Frame(self.wifi_canvas)
+        self.wifi_window=self.wifi_canvas.create_window((0,0),window=self.wifi_list,anchor='nw')
+        self.wifi_list.bind('<Configure>',lambda _e:self.wifi_canvas.configure(scrollregion=self.wifi_canvas.bbox('all')))
+        self.wifi_canvas.bind('<Configure>',lambda e:self.wifi_canvas.itemconfigure(self.wifi_window,width=e.width))
         line=ttk.Frame(tab);line.pack(fill='x')
         ttk.Button(line,text='Connect',command=lambda:self.wifi_action('connect')).pack(side='left')
         ttk.Button(line,text='Refresh',command=self.refresh_wifi).pack(side='left',padx=6)
@@ -380,25 +399,52 @@ class Dashboard:
     def render_wifi(self):
         search=self.wifi_search.get().strip().casefold()
         self.visible_profiles=sorted((p for p in self.profiles if search in p['profile'].casefold()),key=lambda p:(not p['connected'],p['profile'].casefold()))
-        rows(self.wifi_table,[(p['profile'],'Connected' if p['connected'] else 'Saved',p['password'],'Copy') for p in self.visible_profiles])
+        self.selected_wifi_index=None;self.wifi_rows=[]
+        for child in self.wifi_list.winfo_children():child.destroy()
+        header=ttk.Frame(self.wifi_list,style='Card.TFrame');header.pack(fill='x')
+        for col,(name,weight) in enumerate((('Network',5),('Status',2),('Password',4))):
+            header.grid_columnconfigure(col,weight=weight,uniform='wifi')
+            ttk.Label(header,text=name,style='Card.TLabel',anchor='w').grid(row=0,column=col,sticky='ew',padx=8,pady=8)
+        for index,profile in enumerate(self.visible_profiles):
+            row=ttk.Frame(self.wifi_list,style='Card.TFrame' if index%2==0 else 'TFrame')
+            row.pack(fill='x');self.wifi_rows.append(row)
+            for col,weight in enumerate((5,2,4)):row.grid_columnconfigure(col,weight=weight,uniform='wifi')
+            network=ttk.Frame(row);network.grid(row=0,column=0,sticky='ew',padx=(8,4),pady=3)
+            network.grid_columnconfigure(1,weight=1)
+            row.copy_name_button=ttk.Button(network,text='⧉',width=2,style='Copy.TButton',command=lambda i=index:self.copy_wifi_value(i,'name'))
+            row.copy_name_button.grid(row=0,column=0,padx=(0,5))
+            ttk.Label(network,text=profile['profile'],anchor='w').grid(row=0,column=1,sticky='ew')
+            ttk.Label(row,text='Connected' if profile['connected'] else 'Saved',anchor='w').grid(row=0,column=1,sticky='ew',padx=8,pady=3)
+            password=ttk.Frame(row);password.grid(row=0,column=2,sticky='ew',padx=(8,8),pady=3)
+            password.grid_columnconfigure(1,weight=1)
+            row.copy_password_button=ttk.Button(password,text='⧉',width=2,style='Copy.TButton',command=lambda i=index:self.copy_wifi_value(i,'password'))
+            row.copy_password_button.grid(row=0,column=0,padx=(0,5))
+            ttk.Label(password,text=profile['password'],anchor='w').grid(row=0,column=1,sticky='ew')
+            def bind_select(widget,i=index):
+                if not isinstance(widget,ttk.Button):widget.bind('<Button-1>',lambda _e:self.select_wifi(i),add='+')
+                for child in widget.winfo_children():bind_select(child,i)
+            bind_select(row)
+        self.wifi_canvas.yview_moveto(0)
         connected=next((p['profile'] for p in self.profiles if p['connected']),None)
         self.wifi_status.set(('Connected to '+connected+' · ' if connected else '')+f'{len(self.visible_profiles)} saved networks'+(' shown' if search else ''))
 
-    def selected_wifi(self):
-        selected=self.wifi_table.selection()
-        return self.visible_profiles[self.wifi_table.index(selected[0])] if selected else None
+    def select_wifi(self,index):
+        if not 0<=index<len(self.visible_profiles):return
+        self.selected_wifi_index=index
 
-    def copy_wifi_cell(self,event):
-        if self.wifi_table.identify_column(event.x) != '#4':return
-        row=self.wifi_table.identify_row(event.y)
-        if not row:return
-        index=self.wifi_table.index(row)
-        if index>=len(self.visible_profiles):return
-        password=self.visible_profiles[index]['password']
-        if not password or password in ('Windows permission required','No readable saved password','Open network'):
+    def selected_wifi(self):
+        index=self.selected_wifi_index
+        return self.visible_profiles[index] if index is not None and index<len(self.visible_profiles) else None
+
+    def copy_wifi_value(self,index,field):
+        if not 0<=index<len(self.visible_profiles):return
+        profile=self.visible_profiles[index]
+        value=profile['profile'] if field=='name' else profile['password']
+        if field=='password' and (not value or value in ('Windows permission required','No readable saved password','Open network')):
             self.wifi_status.set('This network has no readable saved password to copy.');return
-        self.root.clipboard_clear();self.root.clipboard_append(password)
-        self.wifi_status.set('Password copied to clipboard.')
+        self.root.clipboard_clear();self.root.clipboard_append(value)
+        self.wifi_status.set('Network name copied to clipboard.' if field=='name' else 'Wi-Fi password copied to clipboard.')
+        self.select_wifi(index)
 
     def wifi_details(self):
         item=self.selected_wifi()
@@ -657,7 +703,8 @@ class Dashboard:
             rate_rows.append((name,down_bytes/max(value['elapsed'],.001),up_bytes/max(value['elapsed'],.001)))
         totals={v.key:v for v in aggregate(total_rows)}
         rates=aggregate(rate_rows)
-        rows(self.apps,[(v.label,speed(v.down),speed(v.up),volume(totals[v.key].down+totals[v.key].up)) for v in rates])
+        self.live_app_rows=[(v.label,speed(v.down),speed(v.up),volume(totals[v.key].down+totals[v.key].up),totals[v.key].down+totals[v.key].up) for v in rates]
+        self.render_live_apps()
         self.overlay_snapshot={'network':network or selected or 'not connected','apps':[(v.label,v.down+v.up) for v in rates if v.down+v.up>0]}
 
     def draw_graph(self):

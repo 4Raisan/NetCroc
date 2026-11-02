@@ -132,11 +132,14 @@ finally:app.quit()
         tab=self.app.dashboard
         item=lambda name,connected:dict(profile=name,connected=connected,password='synthetic',auth='test',interface=SimpleNamespace(description='test'))
         tab.events.put(('wifi',[item('Z network',True),item('A network',False)]));tab.poll()
-        self.assertEqual(tuple(tab.wifi_table['columns']),('Network','Status','Password','Copy'))
         self.assertEqual(tab.visible_profiles[0]['profile'],'Z network')
+        self.assertEqual(tab.wifi_rows[0].copy_name_button.cget('text'),'⧉')
+        self.assertEqual(tab.wifi_rows[0].copy_password_button.cget('text'),'⧉')
+        self.assertEqual(tab.wifi_rows[0].copy_name_button.grid_info()['column'],0)
+        self.assertEqual(tab.wifi_rows[0].copy_password_button.grid_info()['column'],0)
         tab.wifi_search.set('a network')
-        self.assertEqual(len(tab.wifi_table.get_children()),1)
-        tab.wifi_table.selection_set(tab.wifi_table.get_children()[0])
+        self.assertEqual(len(tab.wifi_rows),1)
+        tab.select_wifi(0)
         self.assertEqual(tab.selected_wifi()['profile'],'A network')
         with patch('netcroc.dashboard.messagebox.showinfo') as details:tab.wifi_details()
         self.assertIn('Security: test',details.call_args.args[1])
@@ -153,16 +156,19 @@ finally:app.quit()
         self.assertEqual(len(tab.history_table.get_children()),1)
         self.assertEqual(tab.bars.winfo_manager(),'pack')
 
-    def test_wifi_copy_cell_uses_only_clicked_row(self):
-        from types import SimpleNamespace
+    def test_wifi_copy_buttons_copy_their_row_value(self):
         tab=self.app.dashboard
-        tab.visible_profiles=[{'password':'first-test-key'},{'password':'second-test-key'}]
-        with patch.object(tab.wifi_table,'identify_column',return_value='#4'), \
-             patch.object(tab.wifi_table,'identify_row',return_value='row'), \
-             patch.object(tab.wifi_table,'index',return_value=1), \
-             patch.object(self.root,'clipboard_clear'),patch.object(self.root,'clipboard_append') as copy:
-            tab.copy_wifi_cell(SimpleNamespace(x=1,y=1))
-            copy.assert_called_once_with('second-test-key')
+        from types import SimpleNamespace
+        tab.events.put(('wifi',[dict(profile='SSID-test',connected=False,password='key-test',auth='test',interface=SimpleNamespace(description='test'))]));tab.poll()
+        with patch.object(self.root,'clipboard_clear'),patch.object(self.root,'clipboard_append') as copy:
+            tab.wifi_rows[0].copy_name_button.invoke();copy.assert_called_once_with('SSID-test')
+            copy.reset_mock();tab.wifi_rows[0].copy_password_button.invoke();copy.assert_called_once_with('key-test')
+
+    def test_initial_window_matches_the_original_compact_size(self):
+        self.root.deiconify();self.root.update_idletasks()
+        width,height=(int(value) for value in self.root.geometry().split('+',1)[0].split('x'))
+        self.assertEqual(width,min(1120,max(900,self.root.winfo_screenwidth()-80)))
+        self.assertEqual(height,min(800,max(600,self.root.winfo_screenheight()-120)))
 
     def test_vless_paste_validates_before_saving_and_never_connects(self):
         tab=self.app.dashboard.vless_tab

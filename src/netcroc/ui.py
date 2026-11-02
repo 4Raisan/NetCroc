@@ -12,14 +12,22 @@ import pystray
 from .core import DEFAULTS, PRESETS, Settings, validate, probe, set_startup, smart_interval, run_comparison, comparison_verdict, time
 
 def icon_image(color='#38bdf8'):
-    from .shell import logo_path
+    from pathlib import Path
+    base = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parents[2]))
+    tray_icon = base / 'assets' / 'netcroc-tray-eye.ico'
     try:
-        with Image.open(logo_path()) as source:
-            image = source.convert('RGBA').resize((64, 64), Image.Resampling.LANCZOS)
-        ImageDraw.Draw(image).ellipse((49, 49, 63, 63), fill=color, outline='white', width=2)
-        return image
+        with Image.open(tray_icon) as source:
+            source.seek(0)
+            return source.convert('RGBA').resize((64, 64), Image.Resampling.LANCZOS)
     except OSError:
-        pass
+        from .shell import logo_path
+        try:
+            with Image.open(logo_path()) as source:
+                image = source.convert('RGBA').resize((64, 64), Image.Resampling.LANCZOS)
+            ImageDraw.Draw(image).ellipse((49, 49, 63, 63), fill=color, outline='white', width=2)
+            return image
+        except OSError:
+            pass
     image = Image.new('RGBA', (64, 64))
     draw = ImageDraw.Draw(image)
     draw.rounded_rectangle((2, 2, 62, 62), radius=16, fill='#142338')
@@ -53,6 +61,8 @@ class App:
         self.isp_cached = None
         self.isp_cached_error = None
         root.title('NetCroc · Your quiet network companion.')
+        # Keep the compact first-run size from the original release. A window
+        # based on physical monitor pixels can exceed Tk's DPI-scaled workspace.
         width=min(1120,max(900,root.winfo_screenwidth()-80))
         height=min(800,max(600,root.winfo_screenheight()-120))
         root.geometry(f'{width}x{height}')
@@ -483,6 +493,25 @@ def main():
             kernel.CloseHandle(event)
             kernel.CloseHandle(mutex)
             return
+    if os.name == 'nt':
+        # Keep Tk coordinates and Win32 monitor rectangles in one physical
+        # coordinate space; this prevents top-edge overlays drifting on mixed-DPI displays.
+        user32 = ctypes.windll.user32
+        try:
+            set_context = user32.SetProcessDpiAwarenessContext
+            set_context.argtypes = [ctypes.c_void_p]
+            set_context.restype = ctypes.c_bool
+            configured = bool(set_context(ctypes.c_void_p(-4)))
+        except (AttributeError, OSError):
+            configured = False
+        if not configured:
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
+            except (AttributeError, OSError):
+                try:
+                    user32.SetProcessDPIAware()
+                except (AttributeError, OSError):
+                    pass
     root = tk.Tk()
     root.withdraw()  # Build and lay out all controls before revealing the window.
     app = App(root, diagnostic)
