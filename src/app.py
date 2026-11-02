@@ -18,10 +18,15 @@ def report_error(error):
     else:
         reason = 'The app could not start or complete an action (' + type(error).__name__ + ').'
         fix = 'Try the current release from a writable local folder. If it persists, send the diagnostic log to the maintainer.'
-    from netcroc.core import data_folder
-    folder = data_folder()
-    log = folder / 'startup-error.log'
+    message_base = reason + '\n\nHow to fix:\n' + fix
     try:
+        try:
+            from netcroc.core import data_folder
+            folder = data_folder()
+        except Exception:
+            import tempfile
+            folder = Path(tempfile.gettempdir()) / 'NetCroc'
+        log = folder / 'startup-error.log'
         log.parent.mkdir(parents=True, exist_ok=True)
         frames = traceback.extract_tb(error.__traceback__)
         log.write_text(type(error).__name__ + (' module=' + missing if missing else '') + '\n' +
@@ -29,7 +34,7 @@ def report_error(error):
         location = '\n\nDiagnostic log: ' + str(log)
     except OSError:
         location = '\n\nA diagnostic log could not be written.'
-    message = reason + '\n\nHow to fix:\n' + fix + location
+    message = message_base + location
     if os.name == 'nt':
         import ctypes
         ctypes.windll.user32.MessageBoxW(None, message, 'NetCroc', 0x10)
