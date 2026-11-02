@@ -367,6 +367,21 @@ class Dashboard:
             def work():self.dns.restore();return 'Original DNS settings restored.'
             self.task('message',work)
 
+    def check_dns_recovery(self):
+        # A pending transaction means a prior change did not reach committed or restored; after a
+        # reboot nothing restores on its own, so surface it once the window is up.
+        if self.stop.is_set():return
+        try:state=self.dns.load()
+        except (OSError,ValueError,KeyError):return
+        if not state or state.get('state')!='pending':return
+        self.notebook.select(self.tab_dns)
+        if os.name=='nt' and not admin():
+            messagebox.showwarning('DNS rollback incomplete','NetCroc changed DNS but did not finish safely.\nRun NetCroc as administrator, then use Restore original DNS in the DNS tab.')
+            self.dns_status.set('A pending DNS change needs administrator access to restore. Reopen NetCroc elevated.')
+        elif messagebox.askyesno('DNS rollback incomplete','NetCroc changed DNS but did not finish safely. Restore your original DNS settings now?'):
+            def work():self.dns.restore();return 'Original DNS settings restored after an incomplete change.'
+            self.task('message',work)
+
     def build_wifi(self):
         tab=self.tab_wifi
         ttk.Label(tab,text='Wi-Fi',font=('Segoe UI',19,'bold')).pack(anchor='w')
@@ -725,6 +740,12 @@ class Dashboard:
         self.render_live_apps()
         self.overlay_snapshot={'network':network or selected or 'not connected','apps':[(v.label,v.down+v.up) for v in rates if v.down+v.up>0]}
 
+    def apply_theme(self):
+        palette=self.app.shell.palette
+        self.chart_text=palette['foreground']
+        for canvas in (self.graph,self.bars):canvas.configure(bg=palette['card'])
+        self.draw_graph();self.draw_history_bars()
+
     def draw_graph(self):
         canvas=self.graph; width=max(canvas.winfo_width(),260); height=max(90,canvas.winfo_height())
         maximum=max([max(p) for p in self.points] or [1]) or 1
@@ -814,24 +835,3 @@ class Dashboard:
             self.monitor_thread.join(timeout=3)
             if self.monitor_thread.is_alive():return
         self.history.close()
-
-    def check_dns_recovery(self):
-        # A pending transaction means a prior change did not reach committed or restored; after a
-        # reboot nothing restores on its own, so surface it once the window is up.
-        if self.stop.is_set():return
-        try:state=self.dns.load()
-        except (OSError,ValueError,KeyError):return
-        if not state or state.get('state')!='pending':return
-        self.notebook.select(self.tab_dns)
-        if os.name=='nt' and not admin():
-            messagebox.showwarning('DNS rollback incomplete','NetCroc changed DNS but did not finish safely.\nRun NetCroc as administrator, then use Restore original DNS in the DNS tab.')
-            self.dns_status.set('A pending DNS change needs administrator access to restore. Reopen NetCroc elevated.')
-        elif messagebox.askyesno('DNS rollback incomplete','NetCroc changed DNS but did not finish safely. Restore your original DNS settings now?'):
-            def work():self.dns.restore();return 'Original DNS settings restored after an incomplete change.'
-            self.task('message',work)
-
-    def apply_theme(self):
-        palette=self.app.shell.palette
-        self.chart_text=palette['foreground']
-        for canvas in (self.graph,self.bars):canvas.configure(bg=palette['card'])
-        self.draw_graph();self.draw_history_bars()

@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.history import History,speed,volume
 from netcroc.traffic import Rates,Traffic,Record,Header,EventTrace,LogHeader,Logfile,event_direction
-from netcroc.wifi import parse_profile,GUID,Connection,connection_profile
+from netcroc.wifi import parse_profile,read_key,GUID,Connection,connection_profile
 from netcroc import dns,research
 from netcroc.core import validate,DEFAULTS
 
@@ -166,10 +166,11 @@ class WifiTests(unittest.TestCase):
         value.state=4
         self.assertEqual(connection_profile(value,strict=True),'')
 
-    def test_plaintext_open_and_protected_keys(self):
+    def test_profile_list_masks_keys_and_open_networks(self):
         xml='<WLANProfile xmlns="urn:test"><name>test</name><SSIDConfig><SSID><name>ssid</name></SSID></SSIDConfig><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication></authEncryption><sharedKey><protected>false</protected><keyMaterial>example-password</keyMaterial></sharedKey></security></MSM></WLANProfile>'
         value=parse_profile(xml)
-        self.assertEqual(value['ssid'],'ssid');self.assertEqual(value['password'],'example-password');self.assertTrue(value['auto'])
+        self.assertEqual(value['ssid'],'ssid');self.assertTrue(value['auto'])
+        self.assertEqual(value['password'],'Reveal to read')
         self.assertEqual(parse_profile(xml.replace('<protected>false','<protected>true'))['password'],'Windows permission required')
         self.assertEqual(parse_profile('<WLANProfile><authentication>open</authentication></WLANProfile>')['password'],'Open network')
 
@@ -179,14 +180,6 @@ class WifiTests(unittest.TestCase):
         self.assertEqual(read_key(xml.replace('<protected>false','<protected>true')),'Windows permission required')
         self.assertEqual(read_key(xml.replace('<keyMaterial>example-password</keyMaterial>','<keyMaterial></keyMaterial>')),'Windows permission required')
         self.assertEqual(read_key('<WLANProfile><name>test</name></WLANProfile>'),'No readable saved password')
-
-    def test_profile_list_masks_keys_and_open_networks(self):
-        xml='<WLANProfile xmlns="urn:test"><name>test</name><SSIDConfig><SSID><name>ssid</name></SSID></SSIDConfig><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication></authEncryption><sharedKey><protected>false</protected><keyMaterial>example-password</keyMaterial></sharedKey></security></MSM></WLANProfile>'
-        value=parse_profile(xml)
-        self.assertEqual(value['ssid'],'ssid');self.assertTrue(value['auto'])
-        self.assertEqual(value['password'],'Reveal to read')
-        self.assertEqual(parse_profile(xml.replace('<protected>false','<protected>true'))['password'],'Windows permission required')
-        self.assertEqual(parse_profile('<WLANProfile><authentication>open</authentication></WLANProfile>')['password'],'Open network')
 
 class DnsTests(unittest.TestCase):
     def test_dns_packet_success_and_failure(self):
@@ -293,46 +286,25 @@ class DnsTests(unittest.TestCase):
             self.assertTrue(report.exists(),'Health flag opened another mode instead of the read-only helper')
             self.assertEqual(report.read_text(),str(result.returncode))
 
-    def test_dns_watch_dispatch_exits_quietly_on_committed_transaction(self):
-        # Exercises app.py's --dns-watch branch: a committed transaction must return without restoring.
-        import json
+    def test_save_writes_then_protects_the_recovery_file(self):
         with tempfile.TemporaryDirectory() as directory:
-            path=Path(directory)/'dns.json'
-            dns.atomic(path,{'state':'committed','transaction':'t','original':{'index':1,'guid':'g','name':'n','manual':False,'servers':[]}})
-            result=subprocess.run([sys.executable,str(Path(__file__).resolve().parents[1]/'src'/'app.py'),'--dns-watch',str(path),'t'],
-                timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-            self.assertEqual(result.returncode,0)
-            self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['state'],'committed','Watchdog restored an already-committed transaction')
+            manager=self.manager(directory,[True])
+            manager.save({'state':'pending','transaction':'x'})
+            self.assertEqual(manager.load()['state'],'pending')
+            manager.protect.assert_called_once_with(manager.path)
 
-    def test_windows_backend_set_raises_when_netsh_refuses(self):
-        backend=self.backend()
-        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=1)),self.assertRaises(OSError):
-            backend.set({'index':7,'guid':'x'},['1.1.1.1'])
+    def test_load_treats_a_denied_file_as_absent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager=self.manager(directory,[True]); manager.path.write_text('{"state":"pending"}')
+            with patch.object(Path,'read_text',side_effect=PermissionError):
+                self.assertIsNone(manager.load())
 
-    def test_windows_backend_set_clears_to_dhcp_and_refuses_bad_input(self):
-        backend=self.backend()
-        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=0)) as run:
-            backend.set({'index':7,'guid':'x'},[])
-        self.assertIn('source=dhcp',list(run.call_args.args[0]))
-        with patch.object(dns.subprocess,'run') as run:
-            with self.assertRaises(ValueError):backend.set({'index':7,'guid':'x'},['999.1.1.1'])
-            run.assert_not_called()
-        with patch.object(dns.subprocess,'run') as run:
-            with self.assertRaises(OSError):self.backend(valid=False).set({'index':7,'guid':'x'},['1.1.1.1'])
-            run.assert_not_called()
-
-    def test_windows_backend_set_builds_primary_then_additional_chain(self):
-        backend=self.backend(); state={'index':7,'guid':'x','name':'Wi-Fi'}
-        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=0)) as run:
-            backend.set(state,['1.1.1.1','1.0.0.1'])
-        chains=[list(call.args[0]) for call in run.call_args_list]
-        self.assertEqual(chains[0][:5],['netsh.exe','interface','ipv4','set','dnsservers'])
-        self.assertIn('name=7',chains[0]);self.assertIn('source=static',chains[0]);self.assertIn('address=1.1.1.1',chains[0])
-        self.assertEqual(chains[1][:5],['netsh.exe','interface','ipv4','add','dnsservers'])
-        self.assertIn('address=1.0.0.1',chains[1]);self.assertIn('index=2',chains[1])
-
-    def backend(self,valid=True):
-        backend=dns.WindowsBackend(); backend.valid_adapter=lambda _state:valid; return backend
+    def test_harden_is_a_noop_off_windows(self):
+        if os.name=='nt':self.skipTest('POSIX-only assertion; Windows has a dedicated ACL test')
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'dns.json'; path.write_text('{}')
+            dns.harden(path)  # must not raise or change the file on non-Windows
+            self.assertTrue(path.exists())
 
     @unittest.skipUnless(os.name=='nt','Windows security descriptor readback test; POSIX backend differs')
     def test_harden_protects_the_recovery_file_dacl(self):
@@ -353,25 +325,46 @@ class DnsTests(unittest.TestCase):
             self.assertTrue(control.value&0x0004,'expected SE_DACL_PRESENT')
             self.assertTrue(control.value&0x1000,'expected SE_DACL_PROTECTED (inherited access removed)')
 
-    def test_harden_is_a_noop_off_windows(self):
-        if os.name=='nt':self.skipTest('POSIX-only assertion; Windows has a dedicated ACL test')
-        with tempfile.TemporaryDirectory() as directory:
-            path=Path(directory)/'dns.json'; path.write_text('{}')
-            dns.harden(path)  # must not raise or change the file on non-Windows
-            self.assertTrue(path.exists())
+    def backend(self,valid=True):
+        backend=dns.WindowsBackend(); backend.valid_adapter=lambda _state:valid; return backend
 
-    def test_load_treats_a_denied_file_as_absent(self):
-        with tempfile.TemporaryDirectory() as directory:
-            manager=self.manager(directory,[True]); manager.path.write_text('{"state":"pending"}')
-            with patch.object(Path,'read_text',side_effect=PermissionError):
-                self.assertIsNone(manager.load())
+    def test_windows_backend_set_builds_primary_then_additional_chain(self):
+        backend=self.backend(); state={'index':7,'guid':'x','name':'Wi-Fi'}
+        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=0)) as run:
+            backend.set(state,['1.1.1.1','1.0.0.1'])
+        chains=[list(call.args[0]) for call in run.call_args_list]
+        self.assertEqual(chains[0][:5],['netsh.exe','interface','ipv4','set','dnsservers'])
+        self.assertIn('name=7',chains[0]);self.assertIn('source=static',chains[0]);self.assertIn('address=1.1.1.1',chains[0])
+        self.assertEqual(chains[1][:5],['netsh.exe','interface','ipv4','add','dnsservers'])
+        self.assertIn('address=1.0.0.1',chains[1]);self.assertIn('index=2',chains[1])
 
-    def test_save_writes_then_protects_the_recovery_file(self):
+    def test_windows_backend_set_clears_to_dhcp_and_refuses_bad_input(self):
+        backend=self.backend()
+        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=0)) as run:
+            backend.set({'index':7,'guid':'x'},[])
+        self.assertIn('source=dhcp',list(run.call_args.args[0]))
+        with patch.object(dns.subprocess,'run') as run:
+            with self.assertRaises(ValueError):backend.set({'index':7,'guid':'x'},['999.1.1.1'])
+            run.assert_not_called()
+        with patch.object(dns.subprocess,'run') as run:
+            with self.assertRaises(OSError):self.backend(valid=False).set({'index':7,'guid':'x'},['1.1.1.1'])
+            run.assert_not_called()
+
+    def test_windows_backend_set_raises_when_netsh_refuses(self):
+        backend=self.backend()
+        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=1)),self.assertRaises(OSError):
+            backend.set({'index':7,'guid':'x'},['1.1.1.1'])
+
+    def test_dns_watch_dispatch_exits_quietly_on_committed_transaction(self):
+        # Exercises app.py's --dns-watch branch: a committed transaction must return without restoring.
+        import json
         with tempfile.TemporaryDirectory() as directory:
-            manager=self.manager(directory,[True])
-            manager.save({'state':'pending','transaction':'x'})
-            self.assertEqual(manager.load()['state'],'pending')
-            manager.protect.assert_called_once_with(manager.path)
+            path=Path(directory)/'dns.json'
+            dns.atomic(path,{'state':'committed','transaction':'t','original':{'index':1,'guid':'g','name':'n','manual':False,'servers':[]}})
+            result=subprocess.run([sys.executable,str(Path(__file__).resolve().parents[1]/'src'/'app.py'),'--dns-watch',str(path),'t'],
+                timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            self.assertEqual(result.returncode,0)
+            self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['state'],'committed','Watchdog restored an already-committed transaction')
 
 class StudyTests(unittest.TestCase):
     def test_one_second_interval_and_slt(self):

@@ -16,6 +16,49 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from netcroc.ui import App
 
 class GuiTests(unittest.TestCase):
+    def test_simplified_pages_and_dark_themes(self):
+        def texts(widget):
+            result=[]
+            for child in widget.winfo_children():
+                try:result.append(str(child.cget('text')))
+                except tk.TclError:pass
+                result.extend(texts(child))
+            return result
+        shell=self.app.shell;dashboard=self.app.dashboard
+        self.assertNotIn('Check setup',texts(shell.primary['Home']))
+        self.assertIn('Check setup',texts(shell.sidebar))
+        live=texts(dashboard.tab_live)
+        self.assertNotIn('Tracking details',live)
+        self.assertEqual(sum(t in ('Retry app tracking','Enable app tracking') for t in live),1)
+        self.assertNotIn('More options',texts(shell.primary['Tray mode']))
+        for theme in ('Dark','Slate','Light'):
+            shell.theme_var.set(theme);shell.apply_theme()
+            self.assertEqual(dashboard.graph.cget('background'),shell.palette['card'])
+        shell.theme_var.set('Graphite');shell.apply_theme()
+        style=__import__('tkinter').ttk.Style(self.root)
+        self.assertEqual(style.map('TCombobox','fieldbackground')[0][-1],shell.palette['field'])
+        self.assertEqual(dashboard.history_table.tag_configure('alternate')['background'],shell.palette['stripe'])
+        dashboard.history_chart_rows=[(str(i),i*1000,0) for i in range(8)]
+        dashboard.draw_history_bars()
+        rectangles=[i for i in dashboard.bars.find_all() if dashboard.bars.type(i)=='rectangle']
+        self.assertEqual(len(rectangles),3)
+        shell.about.summary.set('Update available: v9.0.0');self.root.update_idletasks()
+        self.assertEqual(shell.update_button.winfo_manager(),'pack')
+        self.assertEqual(shell.update_button.cget('text'),'Update available ↗')
+        self.assertEqual(shell.update_button.cget('style'),'Update.TButton')
+        shell.about.summary.set('No newer release found');self.root.update_idletasks()
+        self.assertEqual(shell.update_button.winfo_manager(),'')
+
+    def test_reopening_gui_checks_for_updates_each_time(self):
+        with patch.object(self.app.shell.about,'check') as check:
+            self.app.diagnostic=False
+            try:
+                self.app.show();self.root.withdraw();self.app.show()
+                self.assertEqual(check.call_count,2)
+            finally:self.app.diagnostic=True
+            self.app.show()
+            self.assertEqual(check.call_count,2)
+
     def test_setup_dialog_checks_without_installing(self):
         with patch('netcroc.setup_ui.inspect',return_value=[('Core application',True,'Ready')]), \
              patch.object(self.app.dashboard.ssh_tab.routing,'install') as install:
@@ -486,6 +529,21 @@ finally:app.quit()
         with patch('ctypes.windll.shell32.IsUserAnAdmin',return_value=0),patch('netcroc.dashboard.messagebox.showerror'),patch.object(dashboard.dns,'apply') as apply:
             dashboard.apply_dns();apply.assert_not_called()
 
+    def test_startup_restores_only_when_a_dns_transaction_is_pending(self):
+        dashboard=self.app.dashboard
+        with patch.object(dashboard.dns,'load',return_value={'state':'committed'}),patch.object(dashboard,'task') as task,\
+             patch('netcroc.dashboard.messagebox.askyesno') as ask:
+            dashboard.check_dns_recovery();task.assert_not_called();ask.assert_not_called()
+
+    def test_startup_offers_restore_for_pending_dns_and_runs_it(self):
+        dashboard=self.app.dashboard
+        with patch.object(dashboard.dns,'load',return_value={'state':'pending'}),patch('netcroc.dashboard.admin',return_value=True),\
+             patch('netcroc.dashboard.messagebox.askyesno',return_value=True) as ask,patch.object(dashboard,'task') as task:
+            dashboard.check_dns_recovery();ask.assert_called_once();task.assert_called_once()
+            with patch.object(dashboard.dns,'restore') as restore:
+                task.call_args.args[1]()  # run the queued worker to prove it restores
+                restore.assert_called_once()
+
     def test_forget_connected_profile_protection(self):
         from netcroc.wifi import Wifi
         wifi=object.__new__(Wifi)
@@ -510,6 +568,19 @@ finally:app.quit()
         with patch.object(dashboard,'selected_vpn',return_value=item),patch.object(dashboard.vpn_store.backend,'require_admin',side_effect=PermissionError('admin needed')),patch('netcroc.dashboard.messagebox.showerror'),patch('netcroc.dashboard.messagebox.askyesno') as confirm,patch.object(dashboard.vpn_store,'connect') as connect:
             dashboard.vpn_action('connect');confirm.assert_not_called();connect.assert_not_called()
 
+    def test_wireguard_connect_blocked_while_tunnel_still_disconnecting(self):
+        dashboard=self.app.dashboard
+        item={'id':'a'*32,'label':'Example'}
+        # Disconnect clears session but keeps stopping alive; WireGuard must still be blocked.
+        for tab_name in ('ssh_tab','vless_tab'):
+            tab=getattr(dashboard,tab_name)
+            with patch.object(dashboard,'selected_vpn',return_value=item),patch.object(tab,'stopping',object()),patch.object(tab,'session',None),\
+                 patch.object(dashboard.vpn_store.backend,'require_admin'),patch('netcroc.dashboard.messagebox.showerror') as showerror,\
+                 patch('netcroc.dashboard.messagebox.askyesno') as confirm,patch.object(dashboard.vpn_store,'connect') as connect:
+                dashboard.vpn_action('connect')
+                self.assertTrue(showerror.called,tab_name)
+                confirm.assert_not_called();connect.assert_not_called()
+
     def test_live_monitor_reads_interfaces_without_admin(self):
         dashboard=self.app.dashboard
         # Hosted Windows runners may already be elevated; exercise the named
@@ -527,76 +598,5 @@ finally:app.quit()
                 dashboard.stop.set();dashboard.monitor_thread.join(timeout=5)
             self.assertFalse(dashboard.monitor_thread.is_alive())
             self.assertTrue(found,'Live adapter sampler did not produce data')
-
-    def test_startup_offers_restore_for_pending_dns_and_runs_it(self):
-        dashboard=self.app.dashboard
-        with patch.object(dashboard.dns,'load',return_value={'state':'pending'}),patch('netcroc.dashboard.admin',return_value=True),\
-             patch('netcroc.dashboard.messagebox.askyesno',return_value=True) as ask,patch.object(dashboard,'task') as task:
-            dashboard.check_dns_recovery();ask.assert_called_once();task.assert_called_once()
-            with patch.object(dashboard.dns,'restore') as restore:
-                task.call_args.args[1]()  # run the queued worker to prove it restores
-                restore.assert_called_once()
-
-    def test_startup_restores_only_when_a_dns_transaction_is_pending(self):
-        dashboard=self.app.dashboard
-        with patch.object(dashboard.dns,'load',return_value={'state':'committed'}),patch.object(dashboard,'task') as task,\
-             patch('netcroc.dashboard.messagebox.askyesno') as ask:
-            dashboard.check_dns_recovery();task.assert_not_called();ask.assert_not_called()
-
-    def test_wireguard_connect_blocked_while_tunnel_still_disconnecting(self):
-        dashboard=self.app.dashboard
-        item={'id':'a'*32,'label':'Example'}
-        # Disconnect clears session but keeps stopping alive; WireGuard must still be blocked.
-        for tab_name in ('ssh_tab','vless_tab'):
-            tab=getattr(dashboard,tab_name)
-            with patch.object(dashboard,'selected_vpn',return_value=item),patch.object(tab,'stopping',object()),patch.object(tab,'session',None),\
-                 patch.object(dashboard.vpn_store.backend,'require_admin'),patch('netcroc.dashboard.messagebox.showerror') as showerror,\
-                 patch('netcroc.dashboard.messagebox.askyesno') as confirm,patch.object(dashboard.vpn_store,'connect') as connect:
-                dashboard.vpn_action('connect')
-                self.assertTrue(showerror.called,tab_name)
-                confirm.assert_not_called();connect.assert_not_called()
-
-    def test_simplified_pages_and_dark_themes(self):
-        def texts(widget):
-            result=[]
-            for child in widget.winfo_children():
-                try:result.append(str(child.cget('text')))
-                except tk.TclError:pass
-                result.extend(texts(child))
-            return result
-        shell=self.app.shell;dashboard=self.app.dashboard
-        self.assertNotIn('Check setup',texts(shell.primary['Home']))
-        self.assertIn('Check setup',texts(shell.sidebar))
-        live=texts(dashboard.tab_live)
-        self.assertNotIn('Tracking details',live)
-        self.assertEqual(sum(t in ('Retry app tracking','Enable app tracking') for t in live),1)
-        self.assertNotIn('More options',texts(shell.primary['Tray mode']))
-        for theme in ('Dark','Slate','Light'):
-            shell.theme_var.set(theme);shell.apply_theme()
-            self.assertEqual(dashboard.graph.cget('background'),shell.palette['card'])
-        shell.theme_var.set('Graphite');shell.apply_theme()
-        style=__import__('tkinter').ttk.Style(self.root)
-        self.assertEqual(style.map('TCombobox','fieldbackground')[0][-1],shell.palette['field'])
-        self.assertEqual(dashboard.history_table.tag_configure('alternate')['background'],shell.palette['stripe'])
-        dashboard.history_chart_rows=[(str(i),i*1000,0) for i in range(8)]
-        dashboard.draw_history_bars()
-        rectangles=[i for i in dashboard.bars.find_all() if dashboard.bars.type(i)=='rectangle']
-        self.assertEqual(len(rectangles),3)
-        shell.about.summary.set('Update available: v9.0.0');self.root.update_idletasks()
-        self.assertEqual(shell.update_button.winfo_manager(),'pack')
-        self.assertEqual(shell.update_button.cget('text'),'Update available ↗')
-        self.assertEqual(shell.update_button.cget('style'),'Update.TButton')
-        shell.about.summary.set('No newer release found');self.root.update_idletasks()
-        self.assertEqual(shell.update_button.winfo_manager(),'')
-
-    def test_reopening_gui_checks_for_updates_each_time(self):
-        with patch.object(self.app.shell.about,'check') as check:
-            self.app.diagnostic=False
-            try:
-                self.app.show();self.root.withdraw();self.app.show()
-                self.assertEqual(check.call_count,2)
-            finally:self.app.diagnostic=True
-            self.app.show()
-            self.assertEqual(check.call_count,2)
 
 if __name__=='__main__':unittest.main()
