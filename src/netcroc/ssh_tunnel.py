@@ -24,15 +24,12 @@ import uuid
 import paramiko
 from .vpn import crypt
 
-GUIDE_URL = 'https://blog.fastssh.com/vpn-protocol/ssh/how-to-create-a-free-ssh-account/'
 SERVERS_URL = 'https://www.fastssh.com/page/ssh-ssl-stunnel-servers'
 DEFAULTS = dict(label='SSH TLS profile', host='', port=443, username='', password='',
                 tls=True, sni='', tls_pin='', ca_pem='', host_key='', expires='',
                 proxy_host='', proxy_port=8080, proxy_user='', proxy_password='',
                 payload_before='', payload_after='', local_port=1080, routing='socks',
                 idle_timeout=0, ca_only=False)
-SECRET_FIELDS = ('password', 'proxy_password', 'username', 'proxy_user',
-                 'payload_before', 'payload_after', 'ca_pem')
 LIMIT = 128 * 1024
 logger = logging.getLogger('netcroc.ssh')
 logger.addHandler(logging.NullHandler())

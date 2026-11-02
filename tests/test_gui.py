@@ -544,4 +544,17 @@ finally:app.quit()
              patch('netcroc.dashboard.messagebox.askyesno') as ask:
             dashboard.check_dns_recovery();task.assert_not_called();ask.assert_not_called()
 
+    def test_wireguard_connect_blocked_while_tunnel_still_disconnecting(self):
+        dashboard=self.app.dashboard
+        item={'id':'a'*32,'label':'Example'}
+        # Disconnect clears session but keeps stopping alive; WireGuard must still be blocked.
+        for tab_name in ('ssh_tab','vless_tab'):
+            tab=getattr(dashboard,tab_name)
+            with patch.object(dashboard,'selected_vpn',return_value=item),patch.object(tab,'stopping',object()),patch.object(tab,'session',None),\
+                 patch.object(dashboard.vpn_store.backend,'require_admin'),patch('netcroc.dashboard.messagebox.showerror') as showerror,\
+                 patch('netcroc.dashboard.messagebox.askyesno') as confirm,patch.object(dashboard.vpn_store,'connect') as connect:
+                dashboard.vpn_action('connect')
+                self.assertTrue(showerror.called,tab_name)
+                confirm.assert_not_called();connect.assert_not_called()
+
 if __name__=='__main__':unittest.main()

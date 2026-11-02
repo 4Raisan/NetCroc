@@ -61,4 +61,61 @@ class RecoveryTests(unittest.TestCase):
             finally:
                 if process.poll() is None:process.kill();process.wait()
 
+    def supervise_setup(self,before,interface,nics,parents,monotonic):
+        process=MagicMock();process.poll.return_value=None;job=MagicMock();write=MagicMock()
+        with patch.object(service,'parent_alive',side_effect=parents),patch.object(service,'read_state',return_value={}),\
+             patch.object(service.psutil,'net_if_addrs',return_value=nics),patch.object(service,'write_state',write),\
+             patch.object(service.time,'monotonic',side_effect=monotonic),patch.object(service.time,'sleep'):
+            outcome=True
+            try:service.supervise(process,job,dict(state='C:/x/state.json',token='a'*64,parent=1,created=0),5,before,interface)
+            except TimeoutError:outcome='timeout'
+        return outcome,write
+
+    def test_supervise_ready_only_for_a_new_utun(self):
+        # A pre-existing utun must not be mistaken for the adapter sing-box just created.
+        outcome,write=self.supervise_setup(set(),'utun',{'utun5':[]},[True,False],[0,1,2])
+        self.assertTrue(outcome)
+        write.assert_called_once();args,kwargs=write.call_args
+        self.assertEqual(args[3],'ready');self.assertEqual(kwargs['adapter'],'utun5')
+
+    def test_supervise_times_out_when_only_a_pre_existing_utun_exists(self):
+        outcome,write=self.supervise_setup({'utun2'},'utun',{'utun2':[]},[True],[0,16])
+        self.assertEqual(outcome,'timeout');write.assert_not_called()
+
+    def test_supervise_ready_for_exact_named_adapter(self):
+        outcome,write=self.supervise_setup(set(),'ncvless',{'ncvless':[]},[True,False],[0,1,2])
+        self.assertTrue(outcome)
+        args,kwargs=write.call_args
+        self.assertEqual(args[3],'ready');self.assertEqual(kwargs['adapter'],'ncvless')
+
+    def test_launch_validates_writes_accepted_and_feeds_worker(self):
+        payload=dict(state='C:/x/state.json',token='a'*64,parent=1,created=0,core='C:/x/sing-box.exe',kind='ssh',upstream=['127.0.0.1'],port=1080)
+        worker=MagicMock();worker.stdin=MagicMock()
+        with patch.object(service.platforms,'require_admin'),patch.object(service,'validate_state'),patch.object(service,'parent_alive',return_value=True),\
+             patch.object(service,'configuration',return_value=(Path('C:/x/sing-box.exe'),{})),patch.object(service,'write_state') as write,\
+             patch.object(service.subprocess,'Popen',return_value=worker) as pop:
+            self.assertEqual(service.launch(payload,5),{'accepted':True})
+        write.assert_any_call(payload['state'],5,'a'*64,'accepted')
+        self.assertEqual(pop.call_args.args[0][-1],'--routing-watch')
+        self.assertEqual(json.loads(worker.stdin.write.call_args.args[0]),dict(payload=payload,owner=5))
+        worker.stdin.close.assert_called_once()
+
+    def test_launch_terminates_worker_when_feeding_fails(self):
+        worker=MagicMock();worker.stdin=MagicMock();worker.stdin.write.side_effect=OSError('pipe')
+        payload=dict(state='s',token='a'*64,parent=1,created=0)
+        with patch.object(service.platforms,'require_admin'),patch.object(service,'validate_state'),patch.object(service,'parent_alive',return_value=True),\
+             patch.object(service,'configuration',return_value=(Path('c'),{})),patch.object(service,'write_state'),\
+             patch.object(service.subprocess,'Popen',return_value=worker):
+            with self.assertRaises(OSError):service.launch(payload,1)
+        worker.terminate.assert_called_once();worker.wait.assert_called_with(5)
+
+    def test_worker_stops_without_configuring_when_parent_gone(self):
+        payload=dict(state='s',token='a'*64,parent=1,created=0)
+        request=json.dumps(dict(payload=payload,owner=5)).encode()
+        with patch.object(service.platforms,'require_admin'),patch.object(service,'validate_state'),patch.object(service,'read_state',return_value={'token':'a'*64}),\
+             patch.object(service,'parent_alive',return_value=False),patch.object(service,'write_state') as write,patch.object(service,'configuration') as conf,\
+             patch.object(service.os,'read',side_effect=[request,b'']):
+            service.worker()
+        write.assert_called_once_with(Path('s'),5,'a'*64,'stopped');conf.assert_not_called()
+
 if __name__=='__main__':unittest.main()

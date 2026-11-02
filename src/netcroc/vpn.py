@@ -213,8 +213,8 @@ class WindowsWireGuard:
         protect_service_path(path.parent.parent)
         protect_service_path(path.parent)
         if path.exists():raise ValueError('An earlier encrypted service file remains. Use Disconnect to clean it up before reconnecting.')
-        with path.open('xb') as file:file.write(crypt(text.encode('utf-8'),description=name,machine=True))
         try:
+            with path.open('xb') as file:file.write(crypt(text.encode('utf-8'),description=name,machine=True))
             protect_service_path(path)
             self._run([str(exe),'/installtunnelservice',str(path)])
             # Connection is explicit; it must not silently reconnect at the next boot.
@@ -222,6 +222,9 @@ class WindowsWireGuard:
         except Exception:
             try:self.disconnect(name)
             except Exception:pass
+            # Never leave an orphaned encrypted config that blocks the next connect.
+            try:path.unlink(missing_ok=True)
+            except OSError:pass
             raise
         return self.status(name)
 

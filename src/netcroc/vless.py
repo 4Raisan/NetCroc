@@ -195,8 +195,10 @@ class Session(Routing):
                                 probe.sendall(b'\x05\x01\x00');ready=ssh.receive_exact(probe,2)==b'\x05\x00'
                         except OSError: ready=False
                     else:
+                        # POSIX whole-PC VLESS is verified by RemoteRouting/supervise before this
+                        # point (vless.py:179), so only the Windows in-process tun reaches here.
                         import psutil
-                        ready=any(name.startswith(('utun','ncvless')) for name in psutil.net_if_addrs()) if os.name!='nt' else 'NetCrocVLESS' in psutil.net_if_addrs()
+                        ready='NetCrocVLESS' in psutil.net_if_addrs()
                     if ready:
                         self.active=True;self.status='Ready · '+('local SOCKS5 127.0.0.1:'+str(p['local_port']) if p['routing']=='socks' else 'whole-PC VLESS')+' · provider connection not yet verified'
                         return self.status

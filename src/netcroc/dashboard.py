@@ -565,11 +565,17 @@ class Dashboard:
     def vpn_action(self,action):
         if self.busy:return
         try:
+            if action=='connect' and os.name=='nt' and not self.vpn_store.backend.installed():
+                self.app.shell.open_setup();return
             item=self.selected_vpn()
-            if action=='connect' and self.ssh_tab.session and not self.ssh_tab.session.cancel.is_set():
-                raise ValueError('Disconnect the SSH tunnel before connecting WireGuard.')
-            if action=='connect' and self.vless_tab.session and not self.vless_tab.session.cancel.is_set():
-                raise ValueError('Disconnect VLESS before connecting WireGuard.')
+            # A disconnect clears session but keeps stopping alive until routes/DNS are torn down;
+            # block WireGuard during that window, matching the SSH/VLESS connect guards.
+            ssh_live=self.ssh_tab.stopping or (self.ssh_tab.session and not self.ssh_tab.session.cancel.is_set())
+            vless_live=self.vless_tab.stopping or (self.vless_tab.session and not self.vless_tab.session.cancel.is_set())
+            if action=='connect' and ssh_live:
+                raise ValueError('The SSH tunnel is connected or still disconnecting. Wait for it to finish before connecting WireGuard.')
+            if action=='connect' and vless_live:
+                raise ValueError('VLESS is connected or still disconnecting. Wait for it to finish before connecting WireGuard.')
             if action in ('connect','disconnect'):self.vpn_store.backend.require_admin()
         except (ValueError,PermissionError) as error:
             messagebox.showerror('VPN',str(error));return
