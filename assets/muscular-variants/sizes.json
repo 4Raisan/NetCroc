@@ -1,0 +1,52 @@
+[
+  {
+    "name": "01-black-cap",
+    "svg_bytes": 69829,
+    "paths": 149
+  },
+  {
+    "name": "02-orange-bandana",
+    "svg_bytes": 84419,
+    "paths": 195
+  },
+  {
+    "name": "03-flex",
+    "svg_bytes": 80626,
+    "paths": 172
+  },
+  {
+    "name": "04-backward-cap",
+    "svg_bytes": 68487,
+    "paths": 147
+  },
+  {
+    "name": "05-crown",
+    "svg_bytes": 77521,
+    "paths": 176
+  },
+  {
+    "name": "06-cream-cap",
+    "svg_bytes": 79649,
+    "paths": 173
+  },
+  {
+    "name": "07-bandana-shades",
+    "svg_bytes": 72149,
+    "paths": 160
+  },
+  {
+    "name": "08-folded-arms",
+    "svg_bytes": 55225,
+    "paths": 114
+  },
+  {
+    "name": "09-charcoal-vest",
+    "svg_bytes": 74419,
+    "paths": 169
+  },
+  {
+    "name": "10-bandana-hug",
+    "svg_bytes": 64950,
+    "paths": 141
+  }
+]

@@ -1,0 +1,3 @@
+Tool: built-in image_gen. Transparent 1:1 face concept.
+Prompt: Original flat forest-green crocodile face with two large blue cloud-shaped eyes, bold snout, minimal detail, no body, tail, globe, lettering, badge or tiny arrows. Designed for 16–32 pixel tray recognition.
+Status: exploratory concept; not applied to the app.

@@ -1,0 +1,275 @@
+{
+  "tool": "built-in image_gen",
+  "concepts": [
+    {
+      "number": 1,
+      "name": "01-cloudback",
+      "title": "Cloudback",
+      "idea": "Cloudback: a full side-view crocodile walking low, long realistic snout, four distinct short clawed legs and a tapering curved tail. Its broad torso integrates three simple cloud lobes into the silhouette, while armored neck and tail remain unmistakably crocodilian. Calm confident expression.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloudback: a full side-view crocodile walking low, long realistic snout, four distinct short clawed legs and a tapering curved tail. Its broad torso integrates three simple cloud lobes into the silhouette, while armored neck and tail remain unmistakably crocodilian. Calm confident expression. Study the user's reference collection for crocodile anatomy, long snouts, curled tails, C-shaped silhouettes and bold negative space, but create a new original composition. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp edges, no gradient, shadow, texture, mockup, text, letters, numbers, watermark, stock logo copying or tiny intricate scales. A real recognizable crocodile, not a dinosaur, dragon, lizard or snake. This is concept 1 of 15; only a single logo in this image.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-d2b107b3-eece-4570-8a43-b3569017255b.png",
+      "file": "01-cloudback.png"
+    },
+    {
+      "number": 2,
+      "name": "02-globe-coil",
+      "title": "Globe Coil",
+      "idea": "Globe Coil: anatomically recognizable crocodile curls around a simplified globe, forming an almost circular C. Long toothed jaws sit upper-right, strong tapering tail arcs underneath, two small visible clawed feet grip the globe. Only two globe meridians and one equator.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Globe Coil: anatomically recognizable crocodile curls around a simplified globe, forming an almost circular C. Long toothed jaws sit upper-right, strong tapering tail arcs underneath, two small visible clawed feet grip the globe. Only two globe meridians and one equator. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 02-globe-coil.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-fe07e223-9599-4e09-b24f-d5a8a1421e93.png",
+      "file": "02-globe-coil.png"
+    },
+    {
+      "number": 3,
+      "name": "03-cloud-jaw",
+      "title": "Cloud Jaw",
+      "idea": "Cloud Jaw: exceptionally minimal side-profile crocodile head, elongated broad snout and one watchful eye. The negative space between slightly open jaws is a clean recognizable three-lobed cloud. Clever integrated silhouette, not an animal pasted over a cloud.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Jaw: exceptionally minimal side-profile crocodile head, elongated broad snout and one watchful eye. The negative space between slightly open jaws is a clean recognizable three-lobed cloud. Clever integrated silhouette, not an animal pasted over a cloud. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 03-cloud-jaw.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-1f8ee243-c06c-4180-8f7f-7eadd87feddb.png",
+      "file": "03-cloud-jaw.png"
+    },
+    {
+      "number": 4,
+      "name": "04-orbit-swimmer",
+      "title": "Orbit Swimmer",
+      "idea": "Orbit Swimmer: full crocodile seen from above, long snout, all four splayed feet, ridged back and long sweeping tail. It swims diagonally across a very simple circular globe orbit, one small cloud interrupts the orbit at lower-right. Balanced square emblem.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Orbit Swimmer: full crocodile seen from above, long snout, all four splayed feet, ridged back and long sweeping tail. It swims diagonally across a very simple circular globe orbit, one small cloud interrupts the orbit at lower-right. Balanced square emblem. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 04-orbit-swimmer.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-cb77058a-4522-4e83-bd18-e0f9e53311ab.png",
+      "file": "04-orbit-swimmer.png"
+    },
+    {
+      "number": 5,
+      "name": "05-cloud-cradle",
+      "title": "Cloud Cradle",
+      "idea": "Cloud Cradle: full crocodile resting naturally on a compact fluffy cloud, forefeet drape over its front edge, snout points left, long tail curls visibly around the right side. Clearly separate cloud and animal with intelligent interlocking contours. Flat sophisticated mascot.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Cradle: full crocodile resting naturally on a compact fluffy cloud, forefeet drape over its front edge, snout points left, long tail curls visibly around the right side. Clearly separate cloud and animal with intelligent interlocking contours. Flat sophisticated mascot. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 05-cloud-cradle.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-450f277a-9f39-4591-878d-0933e7be8ed0.png",
+      "file": "05-cloud-cradle.png"
+    },
+    {
+      "number": 6,
+      "name": "06-cloud-c",
+      "title": "Cloud C",
+      "idea": "Cloud C: bold C-shaped crocodile with long horizontal snout at the top and muscular tapering tail below, visible tiny foreleg. A cloud occupies the open center in negative space. Distinct large angular scutes, spare clean vector cuts, not a dragon.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud C: bold C-shaped crocodile with long horizontal snout at the top and muscular tapering tail below, visible tiny foreleg. A cloud occupies the open center in negative space. Distinct large angular scutes, spare clean vector cuts, not a dragon. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 06-cloud-c.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-c2b3f17a-2496-4c3a-a45a-441ba143b25f.png",
+      "file": "06-cloud-c.png"
+    },
+    {
+      "number": 7,
+      "name": "07-world-bite",
+      "title": "World Bite",
+      "idea": "World Bite: side-profile crocodile head with open jaws gently framing a small globe between them. Long narrow snout, broad skull and clearly reptilian eye, modest pointed teeth. Globe is round with sparse longitude/latitude geometry, no continents.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. World Bite: side-profile crocodile head with open jaws gently framing a small globe between them. Long narrow snout, broad skull and clearly reptilian eye, modest pointed teeth. Globe is round with sparse longitude/latitude geometry, no continents. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 07-world-bite.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-f253fbd2-2b07-41cd-a81a-66264eda96b5.png",
+      "file": "07-world-bite.png"
+    },
+    {
+      "number": 8,
+      "name": "08-cloud-tail",
+      "title": "Cloud Tail",
+      "idea": "Cloud Tail: entire crocodile standing in a three-quarter side pose, with a long curling tail whose tip wraps into a clean cloud outline. Four small clawed feet, elongated low snout, three back scutes. The cloud is made by the tail's curve, not a cloud-shaped head.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Tail: entire crocodile standing in a three-quarter side pose, with a long curling tail whose tip wraps into a clean cloud outline. Four small clawed feet, elongated low snout, three back scutes. The cloud is made by the tail's curve, not a cloud-shaped head. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 08-cloud-tail.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-959aac3e-0df5-48d8-b4c4-a60e3480ecd9.png",
+      "file": "08-cloud-tail.png"
+    },
+    {
+      "number": 9,
+      "name": "09-horizon",
+      "title": "Horizon",
+      "idea": "Cloud Horizon: horizontal crocodile swimming through the lower half of a circular badge. Eyes, long snout and armored back above a clean waterline; underwater long tail visible. Upper half is a cloud plus one globe meridian, no scenery. Restrained monoline emblem.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Horizon: horizontal crocodile swimming through the lower half of a circular badge. Eyes, long snout and armored back above a clean waterline; underwater long tail visible. Upper half is a cloud plus one globe meridian, no scenery. Restrained monoline emblem. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 09-horizon.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-71850908-783f-4de1-a4f1-3df7555f416c.png",
+      "file": "09-horizon.png"
+    },
+    {
+      "number": 10,
+      "name": "10-cloud-guardian",
+      "title": "Cloud Guardian",
+      "idea": "Cloud Guardian: frontal three-quarter crocodile bust embracing a cloud with two short clawed forelegs. Long snout projects left so it is clearly a crocodile rather than frog. Quiet friendly confidence, no giant muscles, no clothing, strong simplified shapes.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Guardian: frontal three-quarter crocodile bust embracing a cloud with two short clawed forelegs. Long snout projects left so it is clearly a crocodile rather than frog. Quiet friendly confidence, no giant muscles, no clothing, strong simplified shapes. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 10-cloud-guardian.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-017e3712-f13c-4792-b01c-a1ac74322817.png",
+      "file": "10-cloud-guardian.png"
+    },
+    {
+      "number": 11,
+      "name": "11-globe-scutes",
+      "title": "Globe Scutes",
+      "idea": "Globe Scutes: bold side-profile crocodile head and neck enclosed within a clean partial globe circle. The neck scales transition into exactly three globe grid segments. White cloud-shaped negative cut at lower center. Mature geometric identity.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Globe Scutes: bold side-profile crocodile head and neck enclosed within a clean partial globe circle. The neck scales transition into exactly three globe grid segments. White cloud-shaped negative cut at lower center. Mature geometric identity. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 11-globe-scutes.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-4b8c4cb7-c5b9-4844-b3a4-2068066c82a9.png",
+      "file": "11-globe-scutes.png"
+    },
+    {
+      "number": 12,
+      "name": "12-cloud-loop",
+      "title": "Cloud Loop",
+      "idea": "Cloud Loop: complete crocodile forms a loose rounded loop around a cloud, with snout horizontal across top-left and tapering tail curling bottom-right. Two visible clawed hands and two rear feet, expressive but restrained eye. Open airy composition, clean single-color cutout.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Loop: complete crocodile forms a loose rounded loop around a cloud, with snout horizontal across top-left and tapering tail curling bottom-right. Two visible clawed hands and two rear feet, expressive but restrained eye. Open airy composition, clean single-color cutout. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 12-cloud-loop.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-0f1adba5-f1a1-431d-b8f6-d77dd2e116de.png",
+      "file": "12-cloud-loop.png"
+    },
+    {
+      "number": 13,
+      "name": "13-world-stride",
+      "title": "World Stride",
+      "idea": "World Stride: full low-slung crocodile walking across the top arc of a small globe, four recognizable legs, long tail descending along globe's left side, head looking right. Small cloud cutout inside globe, exceptionally simple bold silhouette.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. World Stride: full low-slung crocodile walking across the top arc of a small globe, four recognizable legs, long tail descending along globe's left side, head looking right. Small cloud cutout inside globe, exceptionally simple bold silhouette. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 13-world-stride.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-e5b2ae4c-3e04-4bb6-917b-45f1fb2af4d3.png",
+      "file": "13-world-stride.png"
+    },
+    {
+      "number": 14,
+      "name": "14-cloud-snout",
+      "title": "Cloud Snout",
+      "idea": "Cloud Snout: rounded cloud is structurally transformed into crocodile profile: long flat snout emerges right, raised eye and two nostrils, three cloud lobes become the back, small feet and a visible tapering tail curl beneath. Anatomical crocodile read comes first.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Cloud Snout: rounded cloud is structurally transformed into crocodile profile: long flat snout emerges right, raised eye and two nostrils, three cloud lobes become the back, small feet and a visible tapering tail curl beneath. Anatomical crocodile read comes first. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 14-cloud-snout.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-f7bdcd3b-1f19-43f6-a65a-947e21d9f59c.png",
+      "file": "14-cloud-snout.png"
+    },
+    {
+      "number": 15,
+      "name": "15-orbit-cloud",
+      "title": "Orbit Cloud",
+      "idea": "Orbit Cloud: elegant single continuous thick contour draws a crocodile with elongated snout and visible feet encircling a cloud; tail continues into one tilted globe orbit. Airy geometric icon, bold enough at 32 pixels, one powerful integrated mark.",
+      "prompt": "Use case: logo-brand. Create ONE original NetCroc network app logo symbol, square 1:1 canvas, centered with 12% clear padding. Orbit Cloud: elegant single continuous thick contour draws a crocodile with elongated snout and visible feet encircling a cloud; tail continues into one tilted globe orbit. Airy geometric icon, bold enough at 32 pixels, one powerful integrated mark. Study the user's reference collection only for crocodile anatomy, long snouts, clawed feet, curled tails and strong negative space. Make an original composition, never copy a supplied stock logo. Flat vector-like professional logo, deep forest green and white only, plain white background, crisp bold edges. No gradient, shadow, texture, mockup, text, letters, numbers or watermark. Recognizable crocodile, not dinosaur, dragon, lizard or snake. ONE logo only, not a contact sheet. Square 1:1 image. This distinct concept is 15-orbit-cloud.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-bda14245-a571-48d5-942d-947feb0c215e.png",
+      "file": "15-orbit-cloud.png"
+    },
+    {
+      "number": 16,
+      "name": "16-cloud-shell",
+      "title": "Cloud Shell",
+      "idea": "Cloud Shell: full side-on low crocodile facing left, four short clawed legs and a long tapering tail curling underneath. Its torso outline is a single rounded cloud with three lobes; a few bold armored scutes bridge the neck and tail. Very simple compact silhouette.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Shell: full side-on low crocodile facing left, four short clawed legs and a long tapering tail curling underneath. Its torso outline is a single rounded cloud with three lobes; a few bold armored scutes bridge the neck and tail. Very simple compact silhouette.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-74dddc78-5861-4071-9192-98f0b2618a82.png",
+      "file": "16-cloud-shell.png"
+    },
+    {
+      "number": 17,
+      "name": "17-globe-window",
+      "title": "Globe Window",
+      "idea": "Globe Window: bold three-quarter crocodile head looking right inside a cloud outline. The lower cloud lobe contains a small globe grid in negative space, seamlessly integrated into the jaw/neck. Sophisticated compact app symbol, only a few broad shapes.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Globe Window: bold three-quarter crocodile head looking right inside a cloud outline. The lower cloud lobe contains a small globe grid in negative space, seamlessly integrated into the jaw/neck. Sophisticated compact app symbol, only a few broad shapes.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-121417fc-9a71-4538-854e-2bba88788c1a.png",
+      "file": "17-globe-window.png"
+    },
+    {
+      "number": 18,
+      "name": "18-sleeping-croc",
+      "title": "Sleeping Croc",
+      "idea": "Sleeping Croc: complete relaxed crocodile curled into a compact circle atop a cloud, long snout resting across forelegs, eyes softly closed, tail clearly visible around body. Cloud and croc interlock as one calm logo. Strong readable silhouette.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Sleeping Croc: complete relaxed crocodile curled into a compact circle atop a cloud, long snout resting across forelegs, eyes softly closed, tail clearly visible around body. Cloud and croc interlock as one calm logo. Strong readable silhouette.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-4748d14b-cfa5-4cce-a323-4e849e30496d.png",
+      "file": "18-sleeping-croc.png"
+    },
+    {
+      "number": 19,
+      "name": "19-cloud-track",
+      "title": "Cloud Track",
+      "idea": "Cloud Track: top-view crocodile with long snout, four splayed clawed feet and sweeping tapering tail, its back contains one clean cloud-shaped negative cutout. No external globe or badge. Minimal geometric anatomy, recognizable at small size.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Track: top-view crocodile with long snout, four splayed clawed feet and sweeping tapering tail, its back contains one clean cloud-shaped negative cutout. No external globe or badge. Minimal geometric anatomy, recognizable at small size.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-da85caae-c035-4432-9fc7-bf67cb221bc9.png",
+      "file": "19-cloud-track.png"
+    },
+    {
+      "number": 20,
+      "name": "20-sky-hook",
+      "title": "Sky Hook",
+      "idea": "Sky Hook: crocodile seen in side profile standing on four low feet. Long tail arcs upward behind it and finishes by enclosing a cloud overhead. The animal forms a compact asymmetric square composition, snout looking left, calm powerful stance.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Sky Hook: crocodile seen in side profile standing on four low feet. Long tail arcs upward behind it and finishes by enclosing a cloud overhead. The animal forms a compact asymmetric square composition, snout looking left, calm powerful stance.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-6542645f-48ae-4e78-9d33-ca61e9828eee.png",
+      "file": "20-sky-hook.png"
+    },
+    {
+      "number": 21,
+      "name": "21-earth-crescent",
+      "title": "Earth Crescent",
+      "idea": "Earth Crescent: a crocodile's long head and curled armored neck form the left crescent of a globe. The remaining right globe half is sparse latitude/longitude lines. One small cloud-shaped negative gap at the meeting point of animal and globe. Minimal emblem.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Earth Crescent: a crocodile's long head and curled armored neck form the left crescent of a globe. The remaining right globe half is sparse latitude/longitude lines. One small cloud-shaped negative gap at the meeting point of animal and globe. Minimal emblem.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-2376e893-cc91-4fd7-a293-5e59f79fe181.png",
+      "file": "21-earth-crescent.png"
+    },
+    {
+      "number": 22,
+      "name": "22-cloud-crown",
+      "title": "Cloud Crown",
+      "idea": "Cloud Crown: distinctive crocodile head facing forward at a slight angle so its broad long snout is recognizable. Three rounded cloud lobes sit behind the skull like its back silhouette, short forefeet flank the lower cloud edge. Bold symmetrical-ish icon, not frog or dragon.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Crown: distinctive crocodile head facing forward at a slight angle so its broad long snout is recognizable. Three rounded cloud lobes sit behind the skull like its back silhouette, short forefeet flank the lower cloud edge. Bold symmetrical-ish icon, not frog or dragon.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-2fca1d98-3f2e-4013-a2fb-eef326292468.png",
+      "file": "22-cloud-crown.png"
+    },
+    {
+      "number": 23,
+      "name": "23-tail-world",
+      "title": "Tail World",
+      "idea": "Tail World: full crocodile walks to the right in side view while its thick long tail curls into a complete globe beneath its belly. Two simple meridians make the tail circle readable as a globe. Four feet visible. Ingenious integrated logo.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Tail World: full crocodile walks to the right in side view while its thick long tail curls into a complete globe beneath its belly. Two simple meridians make the tail circle readable as a globe. Four feet visible. Ingenious integrated logo.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-4fbce465-658b-4114-a774-447b522b6026.png",
+      "file": "23-tail-world.png"
+    },
+    {
+      "number": 24,
+      "name": "24-cloud-line",
+      "title": "Cloud Line",
+      "idea": "Cloud Line: one thick flowing outline forms a recognizable long-snouted crocodile in side view. Its back swells into three cloud lobes, its tail curls around under the belly, and two clear clawed feet anchor it. Extremely spare icon with a solid eye and just two teeth.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Line: one thick flowing outline forms a recognizable long-snouted crocodile in side view. Its back swells into three cloud lobes, its tail curls around under the belly, and two clear clawed feet anchor it. Extremely spare icon with a solid eye and just two teeth.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-d358eeed-ea82-4f16-a870-b4e4e37a85c1.png",
+      "file": "24-cloud-line.png"
+    },
+    {
+      "number": 25,
+      "name": "25-cloud-peek",
+      "title": "Cloud Peek",
+      "idea": "Cloud Peek: long-snouted crocodile peeks from behind the upper edge of a large cloud, head in side view pointing right, two clawed forefeet grip cloud front, tapering armored tail emerges from the cloud at lower-left. Friendly confident mascot, compact square silhouette.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Peek: long-snouted crocodile peeks from behind the upper edge of a large cloud, head in side view pointing right, two clawed forefeet grip cloud front, tapering armored tail emerges from the cloud at lower-left. Friendly confident mascot, compact square silhouette.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-402414e3-8e77-4dcc-a9c6-d277cd2965a8.png",
+      "file": "25-cloud-peek.png"
+    },
+    {
+      "number": 26,
+      "name": "26-orbital-jaws",
+      "title": "Orbital Jaws",
+      "idea": "Orbital Jaws: two elegant crocodile jaws form most of a round globe outline, long upper snout across the top and lower jaw sweeping underneath. A single globe meridian and equator lie inside, one bold eye and three teeth. Clever mature geometric symbol.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Orbital Jaws: two elegant crocodile jaws form most of a round globe outline, long upper snout across the top and lower jaw sweeping underneath. A single globe meridian and equator lie inside, one bold eye and three teeth. Clever mature geometric symbol.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-ff74a76a-b5fe-467f-b680-dabd76e3d73f.png",
+      "file": "26-orbital-jaws.png"
+    },
+    {
+      "number": 27,
+      "name": "27-cloud-island",
+      "title": "Cloud Island",
+      "idea": "Cloud Island: complete crocodile seen from above curls in a gentle S around a small cloud, four compact legs clearly articulated, long broad snout at upper-left and thick tapering tail lower-right. Airy negative space, no circle badge.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Island: complete crocodile seen from above curls in a gentle S around a small cloud, four compact legs clearly articulated, long broad snout at upper-left and thick tapering tail lower-right. Airy negative space, no circle badge.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-64fcb734-cb64-4b8a-9969-5c3846ba539c.png",
+      "file": "27-cloud-island.png"
+    },
+    {
+      "number": 28,
+      "name": "28-cloud-shield",
+      "title": "Cloud Shield",
+      "idea": "Cloud Shield: a cloud's three rounded upper lobes continue into a crocodile's long head on the right; lower contour is formed by the animal's curved body and tapering tail, with two visible clawed legs. Compact protective badge shape without an actual shield border.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Shield: a cloud's three rounded upper lobes continue into a crocodile's long head on the right; lower contour is formed by the animal's curved body and tapering tail, with two visible clawed legs. Compact protective badge shape without an actual shield border.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-7010a85e-90ce-4a95-8213-8f5bfe5360f5.png",
+      "file": "28-cloud-shield.png"
+    },
+    {
+      "number": 29,
+      "name": "29-world-rest",
+      "title": "World Rest",
+      "idea": "World Rest: crocodile lies horizontally with chin and two forefeet resting on a small globe, hindquarters and long tail curling neatly underneath to form the lower half of the overall square. A cloud is cut out of globe center. Minimal, calm, recognizable croc anatomy.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. World Rest: crocodile lies horizontally with chin and two forefeet resting on a small globe, hindquarters and long tail curling neatly underneath to form the lower half of the overall square. A cloud is cut out of globe center. Minimal, calm, recognizable croc anatomy.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-f9287c6e-ebb5-463d-b2eb-8f51c696e676.png",
+      "file": "29-world-rest.png"
+    },
+    {
+      "number": 30,
+      "name": "30-cloud-swoop",
+      "title": "Cloud Swoop",
+      "idea": "Cloud Swoop: a dynamic full crocodile in a curled diving pose, long snout pointing diagonally down-left, four short clawed limbs, armored tail sweeping overhead to become the top contour of a cloud. One integrated flowing silhouette, clean broad shapes, original app mark.",
+      "prompt": "Use case: logo-brand. ONE original NetCroc network app logo symbol on a square 1:1 white canvas with generous clear padding. Flat vector-like crisp deep forest green and white artwork, broad clean shapes, very few scale details. Recognizable real crocodile anatomy: elongated broad snout, raised eye, short clawed limbs when full body, muscular tapering tail, NOT dragon dinosaur snake or generic lizard. Study the earlier user references only as general anatomy and logo-design inspiration; do not copy them. No text, letters, numbers, watermark, shadows, gradient, 3D, mockup or multi-logo sheet. New composition, not a color variation. Cloud Swoop: a dynamic full crocodile in a curled diving pose, long snout pointing diagonally down-left, four short clawed limbs, armored tail sweeping overhead to become the top contour of a cloud. One integrated flowing silhouette, clean broad shapes, original app mark.",
+      "source": "C:\\Users\\4Raisan\\.codex\\generated_images\\01a16c5d-66c3-7e90-8159-aa9a767350c7\\exec-c7f9c75f-14b2-49b6-9ef0-fd3fcef278b6.png",
+      "file": "30-cloud-swoop.png"
+    }
+  ]
+}
