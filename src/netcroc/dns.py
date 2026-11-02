@@ -104,6 +104,35 @@ def atomic(path,value):
     path=Path(path); path.parent.mkdir(parents=True,exist_ok=True)
     tmp=path.with_name(path.name+'.tmp'); tmp.write_text(json.dumps(value),encoding='utf-8'); tmp.replace(path)
 
+# The recovery file drives an elevated netsh rollback, so a lower-privileged process must not be
+# able to forge it. The DACL (owner-settable at any integrity level) removes inherited broad access;
+# the High mandatory label -- which an elevated token can apply -- blocks the same user's medium-IL
+# processes from writing it while still allowing reads, so the watchdog and status keep working.
+DNS_SACL='S:(ML;OICI;NW;;;HI)'
+DNS_DACL='D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;OW)'
+SE_FILE_OBJECT=1; DACL_SECURITY_INFORMATION=4; LABEL_SECURITY_INFORMATION=0x10
+
+def harden(path):
+    if os.name!='nt':return
+    import ctypes
+    from ctypes import wintypes as wt
+    adv=ctypes.WinDLL('advapi32')
+    convert=adv.ConvertStringSecurityDescriptorToSecurityDescriptorW
+    convert.argtypes=[wt.LPCWSTR,wt.DWORD,ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(wt.DWORD)]; convert.restype=wt.BOOL
+    setf=adv.SetFileSecurityW
+    setf.argtypes=[wt.LPCWSTR,wt.DWORD,ctypes.c_void_p]; setf.restype=wt.BOOL
+    free=ctypes.windll.kernel32.LocalFree; free.argtypes=[ctypes.c_void_p]
+    def apply(sddl,info):
+        sd=ctypes.c_void_p(); size=wt.DWORD()
+        if not convert(sddl,1,ctypes.byref(sd),ctypes.byref(size)):
+            raise OSError('Could not build the DNS recovery file security descriptor.')
+        try:return bool(setf(str(path),info,sd))
+        finally:free(sd)
+    # Label needs SeLabelPrivilege (present only when elevated); retry as DACL-only when refused.
+    if not apply(DNS_DACL+DNS_SACL,DACL_SECURITY_INFORMATION|LABEL_SECURITY_INFORMATION):
+        if not apply(DNS_DACL,DACL_SECURITY_INFORMATION):
+            raise OSError('Could not restrict the DNS recovery file. No DNS change was made.')
+
 class WindowsBackend:
     def snapshot(self,adapter):
         key=r'SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{'+adapter['guid'].strip('{}')+'}'
@@ -143,11 +172,15 @@ class WindowsBackend:
             return False
 
 class DnsManager:
-    def __init__(self,path,backend=None,guard=None):
-        self.path=Path(path); self.backend=backend or WindowsBackend(); self.guard=guard or self.launch_guard
+    def __init__(self,path,backend=None,guard=None,protect=None):
+        self.path=Path(path); self.backend=backend or WindowsBackend(); self.guard=guard or self.launch_guard; self.protect=protect or harden
 
     def load(self):
-        return json.loads(self.path.read_text(encoding='utf-8')) if self.path.exists() else None
+        try:return json.loads(self.path.read_text(encoding='utf-8')) if self.path.exists() else None
+        except PermissionError:return None
+
+    def save(self,state):
+        atomic(self.path,state); self.protect(self.path)
 
     def launch_guard(self):
         args=[sys.executable]
@@ -191,14 +224,14 @@ class DnsManager:
         elif existing and existing['state']=='committed':
             raise ValueError('Restore the previous adapter before applying DNS on another adapter.')
         state={'state':'pending','original':original,'servers':servers,'created':time.time(),'transaction':secrets.token_hex(16)}
-        atomic(self.path,state)
+        self.save(state)
         try:
             # Independent watchdog exists BEFORE the first setting changes.
             self.guard()
             self.backend.set(original,servers)
             if not self.backend.healthy():
                 raise OSError('New DNS failed validation. Restoring the original configuration.')
-            state['state']='committed'; atomic(self.path,state)
+            state['state']='committed'; self.save(state)
         except Exception:
             self.restore()
             raise

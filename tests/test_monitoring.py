@@ -195,7 +195,7 @@ class DnsTests(unittest.TestCase):
     def manager(self,directory,healthy):
         backend=MagicMock(); backend.snapshot.return_value={'index':1,'guid':'test','name':'Wi-Fi','manual':False,'servers':[]}
         backend.healthy.side_effect=healthy
-        return dns.DnsManager(Path(directory)/'dns.json',backend=backend,guard=MagicMock())
+        return dns.DnsManager(Path(directory)/'dns.json',backend=backend,guard=MagicMock(),protect=MagicMock())
 
     @unittest.skipUnless(os.name=='nt','Windows native API / DPAPI test; POSIX backend has separate coverage')
     def test_dns_success_saves_original_before_mutation_and_restores_dhcp(self):
@@ -277,6 +277,86 @@ class DnsTests(unittest.TestCase):
             self.assertIn(result.returncode,(0,2))
             self.assertTrue(report.exists(),'Health flag opened another mode instead of the read-only helper')
             self.assertEqual(report.read_text(),str(result.returncode))
+
+    def test_dns_watch_dispatch_exits_quietly_on_committed_transaction(self):
+        # Exercises app.py's --dns-watch branch: a committed transaction must return without restoring.
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'dns.json'
+            dns.atomic(path,{'state':'committed','transaction':'t','original':{'index':1,'guid':'g','name':'n','manual':False,'servers':[]}})
+            result=subprocess.run([sys.executable,str(Path(__file__).resolve().parents[1]/'src'/'app.py'),'--dns-watch',str(path),'t'],
+                timeout=30,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+            self.assertEqual(result.returncode,0)
+            self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['state'],'committed','Watchdog restored an already-committed transaction')
+
+    def test_windows_backend_set_raises_when_netsh_refuses(self):
+        backend=self.backend()
+        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=1)),self.assertRaises(OSError):
+            backend.set({'index':7,'guid':'x'},['1.1.1.1'])
+
+    def test_windows_backend_set_clears_to_dhcp_and_refuses_bad_input(self):
+        backend=self.backend()
+        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=0)) as run:
+            backend.set({'index':7,'guid':'x'},[])
+        self.assertIn('source=dhcp',list(run.call_args.args[0]))
+        with patch.object(dns.subprocess,'run') as run:
+            with self.assertRaises(ValueError):backend.set({'index':7,'guid':'x'},['999.1.1.1'])
+            run.assert_not_called()
+        with patch.object(dns.subprocess,'run') as run:
+            with self.assertRaises(OSError):self.backend(valid=False).set({'index':7,'guid':'x'},['1.1.1.1'])
+            run.assert_not_called()
+
+    def test_windows_backend_set_builds_primary_then_additional_chain(self):
+        backend=self.backend(); state={'index':7,'guid':'x','name':'Wi-Fi'}
+        with patch.object(dns.subprocess,'run',return_value=MagicMock(returncode=0)) as run:
+            backend.set(state,['1.1.1.1','1.0.0.1'])
+        chains=[list(call.args[0]) for call in run.call_args_list]
+        self.assertEqual(chains[0][:5],['netsh.exe','interface','ipv4','set','dnsservers'])
+        self.assertIn('name=7',chains[0]);self.assertIn('source=static',chains[0]);self.assertIn('address=1.1.1.1',chains[0])
+        self.assertEqual(chains[1][:5],['netsh.exe','interface','ipv4','add','dnsservers'])
+        self.assertIn('address=1.0.0.1',chains[1]);self.assertIn('index=2',chains[1])
+
+    def backend(self,valid=True):
+        backend=dns.WindowsBackend(); backend.valid_adapter=lambda _state:valid; return backend
+
+    @unittest.skipUnless(os.name=='nt','Windows security descriptor readback test; POSIX backend differs')
+    def test_harden_protects_the_recovery_file_dacl(self):
+        import ctypes
+        from ctypes import wintypes as wt
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'dns-restore.json'; path.write_text('{}')
+            dns.harden(path)  # DACL applies at any integrity level; only the label needs elevation
+            adv=ctypes.WinDLL('advapi32')
+            get=adv.GetNamedSecurityInfoW
+            get.argtypes=[wt.LPCWSTR,ctypes.c_int,wt.DWORD,ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(ctypes.c_void_p)]
+            get.restype=wt.DWORD
+            control=wt.DWORD(); valid=wt.DWORD(); sd=ctypes.c_void_p()
+            self.assertEqual(get(str(path),1,4,None,None,None,None,ctypes.byref(sd)),0)
+            adv.GetSecurityDescriptorControl.argtypes=[ctypes.c_void_p,ctypes.POINTER(wt.DWORD),ctypes.POINTER(wt.DWORD)]
+            self.assertTrue(adv.GetSecurityDescriptorControl(sd,ctypes.byref(control),ctypes.byref(valid)))
+            ctypes.windll.kernel32.LocalFree(sd)
+            self.assertTrue(control.value&0x0004,'expected SE_DACL_PRESENT')
+            self.assertTrue(control.value&0x1000,'expected SE_DACL_PROTECTED (inherited access removed)')
+
+    def test_harden_is_a_noop_off_windows(self):
+        if os.name=='nt':self.skipTest('POSIX-only assertion; Windows has a dedicated ACL test')
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'dns.json'; path.write_text('{}')
+            dns.harden(path)  # must not raise or change the file on non-Windows
+            self.assertTrue(path.exists())
+
+    def test_load_treats_a_denied_file_as_absent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager=self.manager(directory,[True]); manager.path.write_text('{"state":"pending"}')
+            with patch.object(Path,'read_text',side_effect=PermissionError):
+                self.assertIsNone(manager.load())
+
+    def test_save_writes_then_protects_the_recovery_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager=self.manager(directory,[True])
+            manager.save({'state':'pending','transaction':'x'})
+            self.assertEqual(manager.load()['state'],'pending')
+            manager.protect.assert_called_once_with(manager.path)
 
 class StudyTests(unittest.TestCase):
     def test_one_second_interval_and_slt(self):

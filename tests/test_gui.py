@@ -523,4 +523,19 @@ finally:app.quit()
             self.assertFalse(dashboard.monitor_thread.is_alive())
             self.assertTrue(found,'Live adapter sampler did not produce data')
 
+    def test_startup_offers_restore_for_pending_dns_and_runs_it(self):
+        dashboard=self.app.dashboard
+        with patch.object(dashboard.dns,'load',return_value={'state':'pending'}),patch('netcroc.dashboard.admin',return_value=True),\
+             patch('netcroc.dashboard.messagebox.askyesno',return_value=True) as ask,patch.object(dashboard,'task') as task:
+            dashboard.check_dns_recovery();ask.assert_called_once();task.assert_called_once()
+            with patch.object(dashboard.dns,'restore') as restore:
+                task.call_args.args[1]()  # run the queued worker to prove it restores
+                restore.assert_called_once()
+
+    def test_startup_restores_only_when_a_dns_transaction_is_pending(self):
+        dashboard=self.app.dashboard
+        with patch.object(dashboard.dns,'load',return_value={'state':'committed'}),patch.object(dashboard,'task') as task,\
+             patch('netcroc.dashboard.messagebox.askyesno') as ask:
+            dashboard.check_dns_recovery();task.assert_not_called();ask.assert_not_called()
+
 if __name__=='__main__':unittest.main()

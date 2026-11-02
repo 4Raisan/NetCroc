@@ -783,3 +783,18 @@ class Dashboard:
             self.monitor_thread.join(timeout=3)
             if self.monitor_thread.is_alive():return
         self.history.close()
+
+    def check_dns_recovery(self):
+        # A pending transaction means a prior change did not reach committed or restored; after a
+        # reboot nothing restores on its own, so surface it once the window is up.
+        if self.stop.is_set():return
+        try:state=self.dns.load()
+        except (OSError,ValueError,KeyError):return
+        if not state or state.get('state')!='pending':return
+        self.notebook.select(self.tab_dns)
+        if os.name=='nt' and not admin():
+            messagebox.showwarning('DNS rollback incomplete','NetCroc changed DNS but did not finish safely.\nRun NetCroc as administrator, then use Restore original DNS in the DNS tab.')
+            self.dns_status.set('A pending DNS change needs administrator access to restore. Reopen NetCroc elevated.')
+        elif messagebox.askyesno('DNS rollback incomplete','NetCroc changed DNS but did not finish safely. Restore your original DNS settings now?'):
+            def work():self.dns.restore();return 'Original DNS settings restored after an incomplete change.'
+            self.task('message',work)
