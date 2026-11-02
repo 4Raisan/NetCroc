@@ -1,6 +1,7 @@
 """Build/check runnable releases. Never runs the app or changes system settings."""
 import argparse
 import ast
+import os
 import re
 import subprocess
 import shutil
@@ -33,6 +34,10 @@ def build():
                    '--icon', str(ROOT / 'assets' / CONFIG['icon']), '--paths', str(ROOT / 'src'),
                    '--distpath', str(Path(temporary) / 'output'), '--workpath', str(Path(temporary) / 'work'),
                    '--specpath', temporary]
+        if sys.platform == 'win32':
+            command += ['--manifest', str(ROOT / 'assets' / 'netcroc.manifest')]
+        for resource in ('netcroc-transparent.png', 'netcroc-tray-eye.ico'):
+            command += ['--add-data', str(ROOT / 'assets' / resource) + os.pathsep + 'assets']
         for dependency in ('paramiko', 'cryptography', 'bcrypt', 'PyNaCl', 'cffi'):
             command += ['--copy-metadata', dependency]
         subprocess.run(command + [str(ROOT / CONFIG['entry'])], check=True)
