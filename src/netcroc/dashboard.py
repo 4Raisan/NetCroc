@@ -509,9 +509,14 @@ class Dashboard:
         ttk.Label(tab,text='1. Import your provider file   2. Select it   3. Connect',style='Muted.TLabel').pack(anchor='w',pady=(6,14))
         self.vpn_line=StatusLine(tab,'Import a .conf profile to begin.')
         self.vpn_status=self.vpn_line.var
+        guide=ttk.Frame(tab,style='Card.TFrame',padding=12);guide.pack(fill='x',pady=(4,8))
+        guide_top=ttk.Frame(guide,style='Card.TFrame');guide_top.pack(fill='x')
+        ttk.Label(guide_top,text='🔑 Get a WireGuard profile',style='Card.TLabel',font=('Segoe UI',11,'bold')).pack(side='left')
+        ttk.Button(guide_top,text='Open Proton VPN',command=lambda:webbrowser.open('https://account.protonvpn.com/downloads')).pack(side='right')
+        ttk.Label(guide,text='① Sign in   →   ② Downloads → WireGuard → Save .conf   →   ③ Import below',style='Card.TLabel',wraplength=760).pack(anchor='w',pady=(8,0))
         self.vpn_table=table(tab,('Profile','Server','Routes','Service','Handshake'),[170,240,130,120,140])
         self.vpn_table.bind('<<TreeviewSelect>>',lambda _event:self._update_vpn_buttons())
-        extra=[('Refresh status',self.refresh_vpn),('Remove selected profile',lambda:self.vpn_action('remove')),('Check public IP',lambda:self.check_vpn_ip()),('Save baseline IP',lambda:self.check_vpn_ip(True)),('Install WireGuard',lambda:webbrowser.open(vpn.INSTALL_URL))]
+        extra=[('Refresh status',self.refresh_vpn),('Remove selected profile',lambda:self.vpn_action('remove')),('Check public IP',lambda:self.check_vpn_ip()),('Save baseline IP',lambda:self.check_vpn_ip(True)),('Install / update WireGuard',self.app.shell.open_setup)]
         extra += [('Get profile: '+name,lambda url=url:webbrowser.open(url)) for name,plan,url in vpn.PROVIDERS]
         extra += [('How to use WireGuard',help_for(self.root,'WireGuard VPN','Use a .conf file from a provider and install WireGuard. NetCroc does not supply accounts or servers. Importing does not connect. Connecting changes system routes/DNS and may interrupt internet. Check handshake and public IP to verify connectivity. Closing NetCroc leaves this tunnel active; use Disconnect to stop it. Data charges still apply.'))]
         self.vpn_bar=actions(tab,[('Import profile',self.import_vpn),('Connect',lambda:self.vpn_action('connect')),('Disconnect',lambda:self.vpn_action('disconnect'))],extra)
@@ -521,8 +526,8 @@ class Dashboard:
         self._vpn_empty(0);self._update_vpn_buttons()
 
     def _vpn_empty(self,count):
-        self.vpn_table.configure(height=6 if count else 3)
-        self.vpn_table.master.pack_configure(expand=bool(count))
+        self.vpn_table.configure(height=4)
+        self.vpn_table.master.pack_configure(expand=True)
 
     def _update_vpn_buttons(self):
         selection=self.vpn_table.selection()

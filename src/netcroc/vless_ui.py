@@ -94,8 +94,8 @@ class VlessTab(SSHTab):
         self._update_buttons()
 
     def _apply_empty(self, count):
-        self.tree.configure(height=8 if count else 3)
-        self.tree.pack_configure(expand=bool(count))
+        self.tree.configure(height=8)
+        self.tree.pack_configure(expand=True)
         if count:
             self.empty_hint.pack_forget()
         else:
