@@ -35,9 +35,21 @@ def parse_profile(xml):
     protected = get('protected').lower() == 'true'
     key = get('keyMaterial')
     auth = get('authentication')
-    password = ('Windows permission required' if protected else key) if key else ('Open network' if auth == 'open' else 'No readable saved password')
+    # The profile list never carries the secret itself, matching the POSIX backends:
+    # a real key is only returned by Wifi.password() on an explicit per-network reveal.
+    password = ('Windows permission required' if protected else 'Reveal to read') if key else ('Open network' if auth == 'open' else 'No readable saved password')
     ssid = root.findtext('.//{*}SSID/{*}name', '') or root.findtext('{*}name','')
     return {'ssid':ssid,'password':password,'auth':auth,'auto':get('connectionMode') == 'auto'}
+
+def read_key(xml):
+    root = ET.fromstring(xml)
+    shared = root.find('.//{*}sharedKey')
+    if shared is None:
+        return 'No readable saved password'
+    key = shared.findtext('{*}keyMaterial') or ''
+    if (shared.findtext('{*}protected') or '').lower() == 'true' or not key:
+        return 'Windows permission required'
+    return key
 
 class Wifi:
     def __init__(self):
@@ -102,11 +114,21 @@ class Wifi:
                 item={'profile':name,'interface':interface,'connected':name==current,'ssid':name,'password':'Windows permission required','auth':''}
                 if not code:
                     try:
-                        item.update(parse_profile(c.wstring_at(xml)))
+                        profile_xml=c.wstring_at(xml)
+                        item.update(parse_profile(profile_xml))
+                        if item['password']=='Reveal to read':item['password']=read_key(profile_xml)
                     finally:
                         self.api.WlanFreeMemory(xml)
                 result.append(item)
         return result
+
+    def password(self,item):
+        xml=c.c_void_p(); flags=w.DWORD(4); access=w.DWORD()
+        self.check(self.api.WlanGetProfile(self.handle,c.byref(item['interface'].guid),item['profile'],None,c.byref(xml),c.byref(flags),c.byref(access)))
+        try:
+            return read_key(c.wstring_at(xml))
+        finally:
+            self.api.WlanFreeMemory(xml)
 
     def connect(self,item):
         params=ConnectParams(0,item['profile'],None,None,1,0)

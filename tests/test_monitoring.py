@@ -173,6 +173,21 @@ class WifiTests(unittest.TestCase):
         self.assertEqual(parse_profile(xml.replace('<protected>false','<protected>true'))['password'],'Windows permission required')
         self.assertEqual(parse_profile('<WLANProfile><authentication>open</authentication></WLANProfile>')['password'],'Open network')
 
+    def test_read_key_reveals_only_on_demand(self):
+        xml='<WLANProfile xmlns="urn:test"><name>test</name><MSM><security><sharedKey><protected>false</protected><keyMaterial>example-password</keyMaterial></sharedKey></security></MSM></WLANProfile>'
+        self.assertEqual(read_key(xml),'example-password')
+        self.assertEqual(read_key(xml.replace('<protected>false','<protected>true')),'Windows permission required')
+        self.assertEqual(read_key(xml.replace('<keyMaterial>example-password</keyMaterial>','<keyMaterial></keyMaterial>')),'Windows permission required')
+        self.assertEqual(read_key('<WLANProfile><name>test</name></WLANProfile>'),'No readable saved password')
+
+    def test_profile_list_masks_keys_and_open_networks(self):
+        xml='<WLANProfile xmlns="urn:test"><name>test</name><SSIDConfig><SSID><name>ssid</name></SSID></SSIDConfig><connectionMode>auto</connectionMode><MSM><security><authEncryption><authentication>WPA2PSK</authentication></authEncryption><sharedKey><protected>false</protected><keyMaterial>example-password</keyMaterial></sharedKey></security></MSM></WLANProfile>'
+        value=parse_profile(xml)
+        self.assertEqual(value['ssid'],'ssid');self.assertTrue(value['auto'])
+        self.assertEqual(value['password'],'Reveal to read')
+        self.assertEqual(parse_profile(xml.replace('<protected>false','<protected>true'))['password'],'Windows permission required')
+        self.assertEqual(parse_profile('<WLANProfile><authentication>open</authentication></WLANProfile>')['password'],'Open network')
+
 class DnsTests(unittest.TestCase):
     def test_dns_packet_success_and_failure(self):
         fake=MagicMock(); fake.__enter__.return_value=fake

@@ -157,12 +157,18 @@ finally:app.quit()
         self.assertEqual(tab.bars.winfo_manager(),'pack')
 
     def test_wifi_copy_buttons_copy_their_row_value(self):
+        from unittest.mock import MagicMock
         tab=self.app.dashboard
         from types import SimpleNamespace
-        tab.events.put(('wifi',[dict(profile='SSID-test',connected=False,password='key-test',auth='test',interface=SimpleNamespace(description='test'))]));tab.poll()
+        tab.events.put(('wifi',[dict(profile='SSID-test',connected=False,password='Reveal to read',auth='test',interface=SimpleNamespace(description='test'))]));tab.poll()
+        self.assertEqual(tab.wifi_rows[0].winfo_children()[2].winfo_children()[1].cget('text'),'Reveal to read')
         with patch.object(self.root,'clipboard_clear'),patch.object(self.root,'clipboard_append') as copy:
             tab.wifi_rows[0].copy_name_button.invoke();copy.assert_called_once_with('SSID-test')
-            copy.reset_mock();tab.wifi_rows[0].copy_password_button.invoke();copy.assert_called_once_with('key-test')
+        with patch.object(self.root,'clipboard_clear'),patch.object(self.root,'clipboard_append') as copy,patch('netcroc.dashboard.messagebox.askyesno',return_value=False) as ask:
+            tab.wifi_rows[0].copy_password_button.invoke();ask.assert_called_once();copy.assert_not_called()
+        wifi=MagicMock();wifi.password.return_value='key-test'
+        with patch.object(self.root,'clipboard_clear'),patch.object(self.root,'clipboard_append') as copy,patch('netcroc.dashboard.messagebox.askyesno',return_value=True),patch('netcroc.dashboard.Wifi',return_value=wifi):
+            tab.wifi_rows[0].copy_password_button.invoke();copy.assert_called_once_with('key-test');wifi.close.assert_called_once()
 
     def test_initial_window_matches_the_original_compact_size(self):
         self.root.deiconify();self.root.update_idletasks()

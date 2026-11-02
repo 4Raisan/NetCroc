@@ -391,7 +391,6 @@ class Dashboard:
         line=ttk.Frame(tab);line.pack(fill='x')
         ttk.Button(line,text='Connect',command=lambda:self.wifi_action('connect')).pack(side='left')
         ttk.Button(line,text='Refresh',command=self.refresh_wifi).pack(side='left',padx=6)
-        if os.name!='nt':ttk.Button(line,text='Show password',command=self.reveal_wifi).pack(side='left',padx=6)
         ttk.Button(line,text='Details',command=self.wifi_details).pack(side='right')
         ttk.Button(line,text='Forget',command=lambda:self.wifi_action('forget')).pack(side='right',padx=6)
         ttk.Label(tab,text='Select a network to connect. Your current connection is protected from Forget.',wraplength=750).pack(anchor='w',pady=10)
@@ -439,11 +438,19 @@ class Dashboard:
     def copy_wifi_value(self,index,field):
         if not 0<=index<len(self.visible_profiles):return
         profile=self.visible_profiles[index]
-        value=profile['profile'] if field=='name' else profile['password']
-        if field=='password' and (not value or value in ('Windows permission required','No readable saved password','Open network')):
-            self.wifi_status.set('This network has no readable saved password to copy.');return
+        if field=='name':
+            value=profile['profile']
+        else:
+            # The list holds only a status string, so the key is read on demand and never silently.
+            if not messagebox.askyesno('Copy Wi-Fi password','Copy the saved password for '+profile['profile']+' to the clipboard?\nThe clipboard stays readable to anything in your Windows session after NetCroc closes.'):
+                return
+            wifi=Wifi()
+            try:value=wifi.password(profile)
+            finally:wifi.close()
+            if value in ('Windows permission required','No readable saved password','Open network'):
+                self.wifi_status.set('This network has no readable saved password to copy.');return
         self.root.clipboard_clear();self.root.clipboard_append(value)
-        self.wifi_status.set('Network name copied to clipboard.' if field=='name' else 'Wi-Fi password copied to clipboard.')
+        self.wifi_status.set('Network name copied to clipboard.' if field=='name' else 'Password copied to clipboard — clear it when you are done.')
         self.select_wifi(index)
 
     def wifi_details(self):
