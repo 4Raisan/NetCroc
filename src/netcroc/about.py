@@ -10,6 +10,7 @@ class About:
     def __init__(self,app):
         self.app=app;self.root=app.root;self.events=queue.Queue();self.busy=False
         self.summary=tk.StringVar(value='Updates not checked')
+        self.latest=tk.StringVar(value='v'+updates.VERSION+' · '+('Not checked' if app.diagnostic else 'Checking…'))
         if not app.diagnostic:self.root.after(1800,self.check)
     def check(self):
         if self.busy:return
@@ -24,6 +25,8 @@ class About:
         try:data=self.events.get_nowait()
         except queue.Empty:self.root.after(150,self.poll);return
         self.busy=False
+        self.latest.set('v'+updates.VERSION+' · '+('Outdated' if data['status']=='available' else 'Latest' if data['status']=='current' else 'Check unavailable'))
+        self.update_url=data.get('url',updates.REPO+'/releases')
         if data['status']=='available':self.summary.set('Update available: '+data['version'])
         elif data['status']=='current':self.summary.set('No newer release found · '+data['version'])
         else:self.summary.set('Update check unavailable')
@@ -34,7 +37,7 @@ class About:
         body=ttk.Frame(dialog,padding=22);body.pack(fill='both',expand=True)
         ttk.Label(body,text='NetCroc',font=('Segoe UI',19,'bold')).pack(anchor='w')
         ttk.Label(body,text='Your quiet network companion.',style='Muted.TLabel').pack(anchor='w',pady=(2,14))
-        ttk.Label(body,text='Version '+updates.VERSION+' · development build').pack(anchor='w')
+        ttk.Label(body,text='Version '+updates.VERSION).pack(anchor='w')
         ttk.Label(body,textvariable=self.summary,wraplength=460).pack(anchor='w',pady=12)
         line=ttk.Frame(body);line.pack(anchor='w')
         ttk.Button(line,text='Check for updates',command=self.check).pack(side='left',padx=(0,8))

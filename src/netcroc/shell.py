@@ -112,7 +112,17 @@ class Shell:
         self.dashboard = dashboard
         self.pages = {self.book.tab(tab, 'text'): self.book.nametowidget(tab) for tab in self.book.tabs()}
         home = ttk.Frame(self.book, padding=(20, 12)); self.book.add(home, text='Home')
-        tray=ttk.Frame(self.book,padding=16);self.book.add(tray,text='Tray mode');self.app.overlay.build_page(tray)
+        tray=ttk.Frame(self.book);self.book.add(tray,text='Tray mode')
+        tray_canvas=tk.Canvas(tray,highlightthickness=0)
+        tray_scroll=ttk.Scrollbar(tray,orient='vertical',command=tray_canvas.yview)
+        tray_canvas.configure(yscrollcommand=tray_scroll.set)
+        tray_scroll.pack(side='right',fill='y');tray_canvas.pack(fill='both',expand=True)
+        tray_body=ttk.Frame(tray_canvas,padding=16)
+        tray_item=tray_canvas.create_window(0,0,window=tray_body,anchor='nw')
+        tray_body.bind('<Configure>',lambda _e:tray_canvas.configure(scrollregion=tray_canvas.bbox('all')))
+        tray_canvas.bind('<Configure>',lambda e:tray_canvas.itemconfigure(tray_item,width=e.width))
+        self.tray_canvas=tray_canvas
+        self.app.overlay.build_page(tray_body)
         self.primary = {'Home': home, 'Connection checks':keepalive, 'Live traffic':dashboard.tab_live,
                         'Usage': dashboard.tab_history, 'Wi-Fi': dashboard.tab_wifi, 'Tray mode':tray}
         self.tools = {label: self.pages[page] for label, page in (
@@ -123,27 +133,31 @@ class Shell:
         self.about=About(self.app)
         for name in self.primary:
             button = ttk.Button(self.sidebar, text=name, style='Nav.TButton', command=lambda n=name: self.show(n))
-            button.pack(fill='x', pady=3); self.buttons[name] = button
+            button.pack(fill='x', pady=1); self.buttons[name] = button
         ttk.Separator(self.sidebar).pack(fill='x', padx=12, pady=(16, 10))
-        ttk.Label(self.sidebar, text='TOOLS', style='Sidebar.TLabel', font=('Segoe UI', 9, 'bold')).pack(anchor='w', padx=14, pady=(0, 6))
+        ttk.Label(self.sidebar, text='⚙  TOOLS', style='Sidebar.TLabel', font=('Segoe UI', 9, 'bold')).pack(anchor='w', padx=14, pady=(0, 6))
         for name in self.tools:
             button = ttk.Button(self.sidebar, text=name, style='ToolNav.TButton', command=lambda n=name: self.show(n))
             button.pack(fill='x', pady=2); self.buttons[name] = button
+        ttk.Separator(self.sidebar).pack(fill='x', padx=12, pady=(10, 6))
+        setup=ttk.Button(self.sidebar, text='Check setup', style='SidebarAction.TButton', command=self.open_setup)
+        setup.pack(fill='x', pady=3)
         from .updates import VERSION,REPO
         import webbrowser
         foot=ttk.Frame(self.sidebar,style='Sidebar.TFrame');foot.pack(side='bottom',fill='x',padx=10,pady=(0,4))
         ttk.Label(foot,text='Appearance',style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
         self.theme_var=tk.StringVar(value=self.app.desktop.data['theme'])
-        themes=ttk.Combobox(foot,textvariable=self.theme_var,values=('Light','Mint','Sand'),state='readonly',width=13,style='Theme.TCombobox')
+        themes=ttk.Combobox(foot,textvariable=self.theme_var,values=tuple(THEMES),state='readonly',width=13,style='Theme.TCombobox')
         themes.pack(fill='x');themes.bind('<<ComboboxSelected>>',lambda _event:self.apply_theme())
-        ttk.Button(foot,text='★  Star on GitHub',style='ToolNav.TButton',command=lambda:webbrowser.open(REPO)).pack(fill='x',pady=(3,1))
-        ttk.Label(foot,text='NetCroc · v'+VERSION,style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
-        self.update_button=ttk.Button(foot,text='Update available',style='Primary.TButton',command=lambda:webbrowser.open(REPO+'/releases'))
-        ttk.Label(foot,textvariable=self.about.summary,style='Sidebar.TLabel',wraplength=155,font=('Segoe UI',8)).pack(anchor='w')
+        # The startup release check (about.py) only surfaces this action when a newer
+        # release exists; every other outcome stays hidden instead of showing status text.
+        self.update_button=ttk.Button(foot,text='Update available ↗',style='Update.TButton',width=14,command=lambda:webbrowser.open(getattr(self.about,'update_url',REPO+'/releases')))
         def update_badge(*_):
             if self.about.summary.get().startswith('Update available:'):self.update_button.pack(fill='x',pady=2)
             else:self.update_button.pack_forget()
         self.about.summary.trace_add('write',update_badge)
+        ttk.Button(foot,text='★ Star on GitHub',style='SidebarAction.TButton',command=lambda:webbrowser.open(REPO)).pack(fill='x',pady=3)
+        ttk.Label(foot,textvariable=self.about.latest,style='Sidebar.TLabel',font=('Segoe UI',8)).pack(anchor='w')
         self.apply_theme()
         ttk.Label(home, text='Your network, at a glance', font=('Segoe UI', 21, 'bold')).pack(anchor='w', pady=(4, 6))
         self.network = tk.StringVar(value='Waiting for connection data…')
@@ -164,16 +178,17 @@ class Shell:
         ttk.Label(card, text='Optional checks may help with idle stalls.', style='Card.TLabel').pack(anchor='w', pady=(8, 4))
         ttk.Label(card, textvariable=self.app.status, style='Card.TLabel', wraplength=640).pack(anchor='w')
         ttk.Button(card, text='Connection settings', command=lambda: self.open('Keep-alive')).pack(anchor='w', pady=(12, 0))
-        ttk.Label(home, text='Monitoring stays local. Speeds are shown in bytes per second.', style='Muted.TLabel', wraplength=650).pack(anchor='w', pady=22)
+        country=ttk.Frame(home);country.pack(side='bottom',fill='x',pady=(12,0))
+        ttk.Button(country,text='Check exit country',command=self.app.overlay.check_country).pack(side='left')
+        ttk.Label(country,textvariable=self.app.overlay.status,style='Muted.TLabel').pack(side='left',padx=12)
         self.app.status.trace_add('write', lambda *_: self.update_toggle())
-        ttk.Button(home, text='Check setup', command=lambda: self.open_setup()).pack(anchor='w')
         self.show('Home')
 
     def apply_theme(self):
         theme=self.theme_var.get();palette=THEMES[theme];self.palette=palette
         style=ttk.Style(self.app.root)
         self.side_canvas.configure(bg=palette['side'])
-        if hasattr(self,'tray_canvas'):self.tray_canvas.configure(bg=palette['base'])
+        self.tray_canvas.configure(bg=palette['base'])
         style.configure('.', background=palette['base'], foreground=palette['foreground'], font=('Segoe UI', 10))
         style.configure('TFrame', background=palette['base'])
         style.configure('TLabel', background=palette['base'])
