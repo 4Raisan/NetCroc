@@ -76,7 +76,7 @@ def rows(tree,items):
 class Dashboard:
     def __init__(self,app,notebook,diagnostic=False):
         self.app=app; self.root=app.root; self.diagnostic=diagnostic; self.notebook=notebook
-        self.events=queue.Queue(); self.stop=threading.Event(); self.points=deque(maxlen=90)
+        self.events=queue.Queue(); self.stop=threading.Event(); self.points=deque(maxlen=90); self.point_times=deque(maxlen=90)
         self.last_live=None; self.profiles=[]; self.adapter_info=[]; self.dns_results=[]; self.busy=False
         from . import core
         self.folder=core.data_folder()
@@ -105,6 +105,7 @@ class Dashboard:
             self.refresh_wifi()
             self.root.after(1500,self.refresh_dns)
             self.root.after(2200,self.refresh_vpn)
+            self.root.after(4000,self.check_dns_recovery)
 
     def tab(self,book,name):
         tab=ttk.Frame(book,padding=16); book.add(tab,text=name); return tab
@@ -123,14 +124,15 @@ class Dashboard:
         ttk.Label(line,textvariable=self.down,font=('Segoe UI',18,'bold')).pack(side='left',padx=20)
         ttk.Label(line,textvariable=self.up,font=('Segoe UI',18,'bold')).pack(side='left')
         self.graph=tk.Canvas(tab,height=150,bg='#ffffff',highlightthickness=0); self.graph.pack(fill='x',pady=6)
-        ttk.Label(tab,text='Download / upload · last 90 samples',style='Muted.TLabel').pack(anchor='w',pady=(0,4))
+        legend=ttk.Frame(tab);legend.pack(fill='x',pady=(0,4))
+        ttk.Label(legend,text='● Download',foreground='#258deb').pack(side='left',padx=(0,16))
+        ttk.Label(legend,text='● Upload',foreground='#16ac80').pack(side='left')
         self.capture_status=tk.StringVar(value='Per-app monitoring initializes below.')
-        self.capture_summary=tk.StringVar(value='App tracking is starting…')
-        ttk.Label(tab,textvariable=self.capture_summary,style='Muted.TLabel',wraplength=780).pack(anchor='w',pady=(4,0))
-        ttk.Button(tab,text='Retry app tracking',command=self.app.enable_app_tracking).pack(anchor='w',pady=4)
-        ttk.Button(tab,text='Tracking details',command=lambda:info_dialog(self.root,'About live traffic',self.capture_status,'Speeds use bytes per second (1024-based). Adapter totals include local traffic. App capture counts Internet TCP/UDP; a VPN may attribute traffic to its tunnel app.')).pack(anchor='e')
-        if os.name=='nt' and not admin():
-            ttk.Button(tab,text='Enable app tracking',command=self.app.enable_app_tracking).pack(anchor='w')
+        self.capture_summary=tk.StringVar(value='Starting app tracking…')
+        tracking=ttk.Frame(tab);tracking.pack(fill='x',pady=4)
+        ttk.Label(tracking,textvariable=self.capture_summary,style='Muted.TLabel').pack(side='left')
+        self.tracking_button=ttk.Button(tracking,text='Enable app tracking' if os.name=='nt' and not admin() else 'Retry app tracking',command=self.app.enable_app_tracking)
+        self.tracking_button.pack(side='right')
         self.apps=table(tab,('Application','Download /s','Upload /s','Observed total'),[450,150,150,150])
         self.live_total_desc=True
         self.live_app_rows=[]
@@ -702,12 +704,12 @@ class Dashboard:
         down,up=interfaces.get(selected,(0,0,0,0))[:2]
         self.app.activity = (down+up, time.monotonic())
         self.down.set('↓ '+speed(down)); self.up.set('↑ '+speed(up))
-        if self.app.tray:self.app.tray.title=('NetCroc · ↓ '+speed(down)+' · ↑ '+speed(up))[:127]
+        if self.app.tray:self.app.set_tray_title(('NetCroc · ↓ '+speed(down)+' · ↑ '+speed(up))[:127])
         network=value['wifi'].get(selected,'')
         self.live_status.set(f"Adapter: {selected or 'not connected'}"+(f' · Wi-Fi: {network}' if network else ''))
         if hasattr(self.app, 'shell') and hasattr(self.app.shell, 'network'):
             self.app.shell.network.set(network or selected or 'No active connection')
-        self.points.append((down,up)); self.draw_graph()
+        self.points.append((down,up)); self.point_times.append(time.monotonic()); self.draw_graph()
         total_rows=[];rate_rows=[]
         for (nic,name),(total_down,total_up) in value['totals'].items():
             if nic!=selected:continue
@@ -721,14 +723,27 @@ class Dashboard:
         self.overlay_snapshot={'network':network or selected or 'not connected','apps':[(v.label,v.down+v.up) for v in rates if v.down+v.up>0]}
 
     def draw_graph(self):
-        canvas=self.graph; canvas.delete('all'); width=max(canvas.winfo_width(),260); height=max(90,canvas.winfo_height())
+        canvas=self.graph; width=max(canvas.winfo_width(),260); height=max(90,canvas.winfo_height())
         maximum=max([max(p) for p in self.points] or [1]) or 1
-        canvas.create_text(8,8,text=speed(maximum),fill='#60776a',anchor='nw')
-        if len(self.points)<2:return
+        foreground=getattr(self,'chart_text','#60776a')
+        def text(tag,x,y,value,anchor):
+            if not canvas.find_withtag(tag):canvas.create_text(x,y,text=value,fill=foreground,anchor=anchor,tags=(tag,))
+            else:canvas.coords(tag,x,y);canvas.itemconfigure(tag,text=value,fill=foreground)
+        text('scale',8,8,speed(maximum),'nw')
+        times=list(self.point_times)
+        if len(times)!=len(self.points):times=list(range(len(self.points)))
+        now=times[-1] if times else 0
+        window=90.0
+        for seconds in (90,60,30,0):
+            text('time'+str(seconds),8+(width-16)*(90-seconds)/90,height-4,'Now' if seconds==0 else f'−{seconds}s','se' if seconds==0 else 'sw')
         for axis,color in ((0,'#2589d8'),(1,'#18a778')):
-            coords=[]
-            for index,point in enumerate(self.points):coords.extend((index*(width-10)/89+5,height-10-point[axis]/maximum*(height-35)))
-            canvas.create_line(*coords,fill=color,width=2)
+            tag='rate'+str(axis);coords=[]
+            for stamp,point in zip(times,self.points):
+                x=8+(width-16)*max(0,1-(now-stamp)/window)
+                coords.extend((x,height-25-point[axis]/maximum*(height-50)))
+            if len(coords)>=4:
+                if canvas.find_withtag(tag):canvas.coords(tag,*coords)
+                else:canvas.create_line(*coords,fill=color,width=2,tags=(tag,))
 
     def poll(self):
         if self.stop.is_set():return
@@ -738,7 +753,7 @@ class Dashboard:
             if kind=='capture':
                 self.capture_status.set(value)
                 lower=value.lower()
-                self.capture_summary.set('App tracking is recording.' if 'capture active' in lower else 'App tracking is unavailable. Network speeds still work.' if 'unavailable' in lower or 'stopped' in lower else 'No app traffic recorded yet. Retrying Windows capture…' if 'trying windows' in lower else 'Waiting for app traffic. If the list stays empty, choose Retry app tracking.')
+                self.capture_summary.set('App tracking is recording.' if 'capture active' in lower else 'App tracking is unavailable. Network speeds still work.' if 'unavailable' in lower or 'stopped' in lower else 'No app traffic recorded yet. Retrying Windows capture…' if 'trying windows' in lower else 'Waiting for app traffic.')
                 continue
             self.busy=False
             self.vpn_line.stop_busy()
