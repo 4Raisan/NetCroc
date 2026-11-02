@@ -9,7 +9,7 @@ from tkinter import ttk
 MODES = ('Left edge', 'Right edge', 'Top middle', 'Static')
 DEFAULTS = dict(overlay_enabled=False, overlay_mode='Right edge', overlay_position=None,
                 overlay_alpha=.95, overlay_apps=True, overlay_network=True, overlay_vpn=True,
-                close_to_tray=True, usage_minimum_mb=0, theme='Light')
+                overlay_width=420, close_to_tray=True, usage_minimum_mb=0, theme='Light')
 
 
 class Preferences:
@@ -29,6 +29,7 @@ class Preferences:
             value = values[key]
             valid = (isinstance(value, bool) if isinstance(default, bool) else
                      value in MODES if key == 'overlay_mode' else
+                     type(value) is int and 320 <= value <= 680 if key == 'overlay_width' else
                      value in ('Light','Mint','Sand') if key == 'theme' else
                      isinstance(value, (int, float)) and .65 <= value <= 1 if key == 'overlay_alpha' else
                      type(value) is int and value in (0, 1, 5) if key == 'usage_minimum_mb' else

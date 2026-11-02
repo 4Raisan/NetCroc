@@ -40,6 +40,7 @@ class TrayOverlay:
         self.vpn = tk.BooleanVar(value=data['overlay_vpn'])
         self.close_to_tray = tk.BooleanVar(value=data['close_to_tray'])
         self.alpha = tk.StringVar(value=f"{round(data['overlay_alpha']*100)}%")
+        self.width = tk.IntVar(value=data['overlay_width'])
         self.status = tk.StringVar(value='Exit country has not been checked.')
         self.events = queue.Queue(); self.signal = None; self.country = None
         self.signature = None; self.last_network_read = 0; self.network_busy = False
@@ -73,7 +74,7 @@ class TrayOverlay:
         for widget in [self.canvas, self.body, top, *labels, top.winfo_children()[0]]:
             widget.bind('<ButtonPress-1>', self.drag_start); widget.bind('<B1-Motion>', self.drag)
             widget.bind('<ButtonRelease-1>', self.drag_end)
-        for variable in (self.enabled, self.mode, self.apps, self.network, self.vpn, self.close_to_tray, self.alpha):
+        for variable in (self.enabled, self.mode, self.apps, self.network, self.vpn, self.close_to_tray, self.alpha, self.width):
             variable.trace_add('write', lambda *_:self.apply())
         self.apply()
         self.timer = self.root.after(200, self.tick)
@@ -91,6 +92,10 @@ class TrayOverlay:
         for title,mode in [('Left','Left edge'),('Right','Right edge'),('Top','Top middle'),('Floating','Static')]:
             ttk.Radiobutton(modes,text=title,variable=self.mode,value=mode,style='Segment.TRadiobutton').pack(side='left',padx=(0,6))
         ttk.Label(card,text='Edge: move your mouse to reveal. Floating: drag it anywhere.',style='Card.TLabel',wraplength=650).pack(anchor='w',pady=(10,0))
+        width_row=ttk.Frame(card,style='Card.TFrame');width_row.pack(fill='x',pady=(12,0))
+        ttk.Label(width_row,text='Popup width',style='Card.TLabel').pack(side='left')
+        self.width_value=ttk.Label(width_row,text=f'{self.width.get()} px',style='Card.TLabel',width=7,anchor='e');self.width_value.pack(side='right')
+        ttk.Scale(width_row,from_=320,to=680,variable=self.width,command=self.width_changed).pack(side='right',fill='x',expand=True,padx=12)
         card=ttk.Frame(parent,style='Card.TFrame',padding=16);card.pack(fill='x',pady=(0,12))
         ttk.Label(card,text='Make it yours',style='Card.TLabel',font=('Segoe UI',12,'bold')).pack(anchor='w',pady=(0,8))
         for title,variable in [('Top apps',self.apps),('Wi-Fi & ISP',self.network),('VPN & exit country',self.vpn)]:
@@ -117,7 +122,7 @@ class TrayOverlay:
             alpha = float(self.alpha.get().rstrip('%'))/100
             self.preferences.update(dict(overlay_enabled=self.enabled.get(), overlay_mode=self.mode.get(),
                 overlay_apps=self.apps.get(), overlay_network=self.network.get(), overlay_vpn=self.vpn.get(),
-                close_to_tray=self.close_to_tray.get(), overlay_alpha=alpha))
+                close_to_tray=self.close_to_tray.get(), overlay_alpha=alpha, overlay_width=round(self.width.get())))
             self.panel.attributes('-alpha', alpha)
         except (ValueError, OSError, tk.TclError): self.status.set('Preferences could not be saved; this session still works.')
         for label,shown in zip(self.labels,[True,self.network.get(),self.apps.get(),self.vpn.get()]):
@@ -125,6 +130,12 @@ class TrayOverlay:
             if shown:label.pack(fill='x',pady=(5,0))
         if not self.enabled.get() or self.mode.get()!=getattr(self,'applied_mode',None): self.hide_panel()
         self.applied_mode=self.mode.get()
+
+    def width_changed(self, value=None):
+        width=max(320,min(680,int(float(value if value is not None else self.width.get())+0.5)))
+        if self.width.get()!=width:self.width.set(width)
+        self.preferences.update({'overlay_width':width})
+        if hasattr(self,'width_value') and self.width_value.winfo_exists():self.width_value.configure(text=f'{width} px')
 
     def reset_position(self):
         self.preferences.update({'overlay_position': None}); self.hide_panel()
@@ -213,7 +224,8 @@ class TrayOverlay:
         if self.enabled.get():
             self.update_text(); point = self.root.winfo_pointerxy(); mode = self.mode.get()
             area = monitor_rect(self.root, point); screen = monitor_rect(self.root, point, work=False)
-            width=500 if mode=='Top middle' else 370
+            area=monitor_rect(self.root, self.root.winfo_pointerxy())
+            width=min(self.width.get(),max(240,area[2]-area[0]-16))
             self.canvas.itemconfigure(self.body_window,width=width-36)
             for label in self.labels:label.configure(wraplength=width-36)
             self.body.update_idletasks()

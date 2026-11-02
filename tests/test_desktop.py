@@ -32,11 +32,13 @@ class DesktopTests(unittest.TestCase):
     def test_preferences_are_validated_and_static_position_survives_restart(self):
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'desktop.json';prefs=Preferences(path)
-            prefs.update(dict(overlay_mode='Static',overlay_enabled=True,overlay_position=[-1200,150],usage_minimum_mb=5))
+            prefs.update(dict(overlay_mode='Static',overlay_enabled=True,overlay_position=[-1200,150],overlay_width=560,usage_minimum_mb=5))
             loaded=Preferences(path)
             self.assertEqual(loaded.data['overlay_position'],[-1200,150])
-            loaded.update(dict(overlay_mode='bad',overlay_position=['bad',0],usage_minimum_mb=-1))
+            self.assertEqual(loaded.data['overlay_width'],560)
+            loaded.update(dict(overlay_mode='bad',overlay_position=['bad',0],overlay_width=900,usage_minimum_mb=-1))
             self.assertEqual(loaded.data['overlay_mode'],'Static')
+            self.assertEqual(loaded.data['overlay_width'],560)
             self.assertEqual(loaded.data['usage_minimum_mb'],5)
             self.assertFalse(path.with_suffix('.tmp').exists())
 
