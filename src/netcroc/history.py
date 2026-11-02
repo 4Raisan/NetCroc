@@ -59,7 +59,7 @@ class History:
                 self.db.execute('INSERT INTO coverage_legacy SELECT * FROM coverage')
                 self.db.execute('INSERT INTO history_meta VALUES(?,?)',('minute_started',datetime.now().isoformat()))
         self.minute_started=datetime.fromisoformat(self.db.execute("SELECT value FROM history_meta WHERE key='minute_started'").fetchone()[0])
-        self.prune()
+        self.prune(); self._pruned=date.today()
 
     def prune(self, today=None):
         cutoff = ((today or date.today()) - timedelta(days=RETENTION_DAYS-1)).isoformat()
@@ -116,7 +116,11 @@ class History:
                     self.db.execute('''INSERT INTO usage_minute VALUES(?,?,?,?,?,?)
                         ON CONFLICT(minute,kind,network,app) DO UPDATE SET down=down+excluded.down,up=up+excluded.up''',
                         (minute,kind,network,app,d,u))
-        self.prune(ended.date())
+        # Retention trimming is a daily housekeeping task; running it on every ~30s flush
+        # repeatedly scanned the minute tables without removing anything new.
+        day=ended.date()
+        if day!=self._pruned:
+            self.prune(day); self._pruned=day
 
     def query(self, start, end, kind='adapter', group='network', network=None):
         if isinstance(start,datetime):return self.query_window(start,end,kind,group,network)
