@@ -58,7 +58,7 @@ def rows(tree,items):
         values=tree.item(iid,'values')
         if values:buckets[str(values[0])].append(iid)
     if not getattr(tree,'_netcroc_stripes',False):
-        tree.tag_configure('alternate',background='#f6f9f7');tree._netcroc_stripes=True
+        tree.tag_configure('alternate',background=ttk.Style(tree).lookup('Treeview','stripecolor') or '#f6f9f7');tree._netcroc_stripes=True
     used=set()
     for index,item in enumerate(items):
         key=str(item[0]);iid=buckets[key].popleft() if buckets[key] else None
@@ -811,3 +811,9 @@ class Dashboard:
         elif messagebox.askyesno('DNS rollback incomplete','NetCroc changed DNS but did not finish safely. Restore your original DNS settings now?'):
             def work():self.dns.restore();return 'Original DNS settings restored after an incomplete change.'
             self.task('message',work)
+
+    def apply_theme(self):
+        palette=self.app.shell.palette
+        self.chart_text=palette['foreground']
+        for canvas in (self.graph,self.bars):canvas.configure(bg=palette['card'])
+        self.draw_graph();self.draw_history_bars()
