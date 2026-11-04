@@ -39,6 +39,11 @@ def main():
         if system=='linux':cmd+=['--hidden-import','PIL._tkinter_finder']
         if system=='windows':cmd+=['--icon',str(ROOT/'assets/netcroc.ico'),'--manifest',str(ROOT/'assets/netcroc.manifest')]
         for dep in ('paramiko','cryptography','bcrypt','PyNaCl','cffi'):cmd+=['--copy-metadata',dep]
+        if system=='windows':
+            sys.path.insert(0,str(ROOT/'src'))
+            from netcroc.wireguard_setup import bundle
+            msi=bundle(work/'wireguard')
+            cmd+=['--add-data',str(msi)+os.pathsep+'assets/wireguard']
         if system!='windows':cmd+=['--copy-metadata','keyring','--collect-submodules','keyring.backends']
         subprocess.run(cmd+[str(ROOT/'src/app.py')],check=True)
         exe=work/'dist'/('NetCroc.app/Contents/MacOS/NetCroc' if system=='darwin' else 'NetCroc.exe' if system=='windows' else 'NetCroc')

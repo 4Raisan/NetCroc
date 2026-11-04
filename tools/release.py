@@ -40,9 +40,28 @@ def build():
             command += ['--add-data', str(ROOT / 'assets' / resource) + os.pathsep + 'assets']
         for dependency in ('paramiko', 'cryptography', 'bcrypt', 'PyNaCl', 'cffi'):
             command += ['--copy-metadata', dependency]
-        subprocess.run(command + [str(ROOT / CONFIG['entry'])], check=True)
-        (ROOT / 'releases').mkdir(exist_ok=True)
-        candidate = ROOT / 'releases' / (CONFIG['exe'] + '.exe.new')
+        sys.path.insert(0,str(ROOT/'src'))
+        from netcroc.wireguard_setup import bundle
+        msi=bundle(Path(temporary)/'wireguard')
+        command+=['--add-data',str(msi)+os.pathsep+'assets/wireguard']
+        # Every build path stays absolute and inside the temporary directory, so nothing is
+        # written into the repository while PyInstaller works.
+        subprocess.run(command + [str(ROOT / CONFIG['entry'])], check=True, cwd=temporary)
+        output = ROOT / 'releases'
+        output.mkdir(exist_ok=True)
+        built = Path(temporary) / 'output' / (CONFIG['exe'] + '.exe')
+        # The versioned file is the primary product: a locked compatibility EXE must never
+        # cost the build its output.
+        versioned = output / asset_name()
+        staged = versioned.with_name(versioned.name + '.new')
+        try:
+            shutil.copyfile(built, staged)
+            staged.replace(versioned)
+        finally:
+            staged.unlink(missing_ok=True)
+        print('Versioned release build: ' + versioned.name)
+        compatibility = output / (CONFIG['exe'] + '.exe')
+        staged = compatibility.with_name(compatibility.name + '.new')
         try:
             shutil.copyfile(Path(temporary) / 'output' / (CONFIG['exe'] + '.exe'), candidate)
             candidate.replace(ROOT / 'releases' / (CONFIG['exe'] + '.exe'))
