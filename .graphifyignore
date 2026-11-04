@@ -6,6 +6,9 @@ test-artifacts/
 build/
 dist/
 
+# Archived local junk: old builds, stale evidence and Python caches.
+Deep-Shit/
+
 # Logo/icon design drafts and binary artwork. Not application logic.
 assets/
 

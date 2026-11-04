@@ -3,6 +3,7 @@ releases/
 build/
 dist/
 test-artifacts/
+Deep-Shit/
 *.spec
 *.exe
 *.zip
