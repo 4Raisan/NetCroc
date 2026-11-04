@@ -10,10 +10,11 @@ NetCroc keeps the application, tests, development tools and documentation separa
 | `tests/` | Automated unit, GUI and native loopback tests. |
 | `tools/` | Build helpers, verification utilities and explicit live-test runners. |
 | `docs/` | User setup guides, research and dated test history. |
-| `assets/` | Current icon/diagram plus local design explorations. |
+| `assets/` | Current icon/diagram and README artwork. |
 | `.github/workflows/` | Native Windows/macOS/Linux tests and package CI. |
 | `releases/` | Generated local EXE and launcher; ignored by Git. |
 | `test-artifacts/` | Generated local evidence, routing-core downloads and build inputs; ignored by Git. |
+| `Deep-Shit/` | Archived out-of-date builds (version and build date kept in each EXE name), stale evidence and Python caches; ignored by Git and by graph scanning. Nothing here is a current release. |
 
 `.git/`, `.venv/` and `__pycache__/` are repository/runtime internals rather than application features. Virtual environments and Python caches are ignored by Git.
 
@@ -27,7 +28,7 @@ NetCroc keeps the application, tests, development tools and documentation separa
 | `netcroc/desktop.py` | Local desktop preferences, monitor geometry and custom window controls. |
 | `netcroc/tray_mode.py` | Optional edge/static overlays and best-effort tunnel/exit observations. |
 | `netcroc/shell.py` | Direct sidebar navigation, Home overview and network tool links. |
-| `netcroc/about.py` | About panel and the non-blocking release summary shown in the sidebar. |
+| `netcroc/about.py` | Background update check driving the sidebar update button. |
 | `netcroc/updates.py` | GitHub release-list check and version ordering; never downloads or installs. |
 | `netcroc/prerequisites.py` | Read-only inspection of optional WireGuard and the verified routing core. |
 | `netcroc/setup_ui.py` | Setup and repair dialog; installation stays user initiated. |
@@ -61,13 +62,13 @@ The UI calls the backends; the monitoring loop writes history. GUI diagnostics d
 | Optional verified core download/config check | `check_ssh_routing.py` |
 | Local transport stress tests | `soak_connections.py` |
 | Read-only process/history observation | `longrun_observer.py` |
-| Explicit live network tests | `live_admin_checks.py`, `live_dns_rollback_check.py`, `live_dns_timeout_check.py`, `live_tunnel_check.py`, `live_wireguard_check.py`, `live_wifi_switch_check.py`, `live_provider_check.py`, `live_posix_routing_check.py` |
+| Explicit live network tests | `live_admin_checks.py`, `live_dns_rollback_check.py`, `live_dns_timeout_check.py`, `live_tunnel_check.py`, `live_wireguard_check.py`, `live_wifi_switch_check.py`, `live_provider_check.py`, `live_posix_routing_check.py`, `test_phone_tunnel.py` |
 
 The `live_*` scripts are opt-in lab tools, not startup code. Only the explicitly isolated Linux routing lab runs in CI; it refuses the host network namespace. Depending on the script they need elevation, change DNS/routes, create temporary services or switch Wi-Fi. Review their arguments and recovery behaviour before running them at the PC. Standard tests use synthetic credentials; provider checks require a private local profile or an existing encrypted profile ID.
 
 ## Knowledge graph
 
-A [graphify](https://pypi.org/project/graphifyy/) knowledge graph indexes `src/`, `tests/`, `tools/` and the Markdown in `docs/` and `README.md` for navigation and refactor impact analysis. Extraction is local AST plus Markdown headings: no source is sent to an LLM and no API key is used. A healthy build is roughly 1,072 nodes, 2,676 edges and 50 named communities.
+A [graphify](https://pypi.org/project/graphifyy/) knowledge graph indexes `src/`, `tests/`, `tools/` and the Markdown in `docs/` and `README.md` for navigation and refactor impact analysis. Extraction is local AST plus Markdown headings: no source is sent to an LLM and no API key is used. A healthy build is roughly 1,133 nodes, 2,849 edges and 55 named communities.
 
 ```powershell
 python -m graphify update .          # incremental re-extract after code changes
@@ -82,11 +83,19 @@ Outputs live in `graphify-out/`: `graph.html` (interactive), `graph.json` (query
 
 Post-commit, post-checkout, post-merge and post-rewrite hooks rebuild the graph in the background (`graphify hook status`, `graphify hook uninstall`). Two verified limits: `from netcroc import vpn` and `from . import dns` resolve to `__init__.py` rather than the target module, so the graph under-reports coupling for package-level imports — 12 test-to-module edges at the time of writing — and `graph.html` loads its vis-network renderer from a CDN, so it needs internet access to draw.
 
-## Assets and design drafts
+## Assets
 
-`assets/netcroc.ico` is the build icon. `netcroc.png` and `architecture.svg` are existing artwork. The logo concept directories and `netcroc-cloud-logo-v*` files are design drafts; none has been selected as a replacement icon. Keep the current gallery paths stable while reviewing concepts. They are separate from runtime data and private VPN profiles.
+`assets/` holds only the artwork the application, build and README actually use:
 
-The tracked project can be checked with `git ls-files`; local logo experiments may appear as untracked files. `tools/release.py --check` checks local assets too, so its file count can differ from a clean checkout.
+| File | Used by |
+|---|---|
+| `netcroc.ico`, `netcroc.manifest` | PyInstaller build icon and Windows manifest (`tools/package_release.py`, `tools/release.py`). |
+| `netcroc-transparent.png` | Window logo (`src/netcroc/shell.py`). |
+| `netcroc-tray-eye.ico` | Tray icon (`src/netcroc/ui.py`). |
+| `netcroc.svg`, `netcroc.png`, `netcroc-banner.svg`, `netcroc-banner.png` | README logo/banner links. |
+| `architecture.svg` | Legacy Fastlane notes diagram. |
+
+Logo concept galleries were removed from the repository; new design experiments belong in an ignored folder, not in Git. `tools/release.py --check` verifies the README's asset links, so deleting a referenced file fails the check.
 
 ## Documentation
 
@@ -104,3 +113,5 @@ The tracked project can be checked with `git ls-files`; local logo experiments m
 The optional bundle-refresh utility recognizes the older package name when examining compatible earlier builds, then writes the current `netcroc` package and verifies module fingerprints.
 
 Executables, test evidence and private VPN configuration files are excluded from Git. Publishing a downloadable GitHub Release remains separate from pushing source and running CI.
+
+Current local build: `releases/NetCroc-v0.4.6-windows-x64.exe`. Use `python tools/release.py --build` to rebuild; Python and dependencies are bundled. Setup diagnostics are available from the sidebar. Dark and light themes do not require additional packages.

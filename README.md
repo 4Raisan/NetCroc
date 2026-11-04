@@ -22,9 +22,9 @@ Tray mode provides **Left edge**, **Right edge**, **Top middle** and **Static** 
 
 VPN indication is a best-effort active-interface signal, not proof of protection. Exit country comes from a bounded public-IP lookup when a tunnel interface is observed, or through the Check public exit country button. Country checks are cached/throttled and are not a DNS-leak test; app-only proxies may exit elsewhere. No country is inferred from a saved profile name.
 
-These desktop, sidebar, Wi-Fi, app-history and ISP improvements are currently in source/local builds. Published [beta 3 downloads](https://github.com/4Raisan/NetCroc/releases/tag/v0.4.0-beta.3) use the earlier Tools overview. The normal app reads real adapter speeds and saved history; synthetic data is limited to explicitly labelled development previews.
+The current Windows build is **0.4.6**. Download 0.4.6 from GitHub Releases. Its tag still points to the older published source snapshot; see the release source-archive notice. Normal monitoring uses real adapter speeds and recorded history.
 
-Automatic ISP mode uses a bounded HTTPS [public-network lookup](https://ipwhois.io/documentation), cached for 30 minutes on the same network. Recognized Sri Lankan providers select the keep-alive preset before activation; manual selection disables automatic mode. An unknown/unavailable lookup keeps the existing selection. A VPN may identify its exit provider instead of the SIM brand. No SSIDs, Wi-Fi passwords or app history are sent to the lookup service.
+Automatic ISP mode uses a bounded HTTPS [public-network lookup](https://ipwho.is/), cached for 30 minutes on the same network. Recognized Sri Lankan providers select the keep-alive preset before activation; manual selection disables automatic mode. An unknown/unavailable lookup keeps the existing selection. A VPN may identify its exit provider instead of the SIM brand. No SSIDs, Wi-Fi passwords or app history are sent to the lookup service.
 
 Wi-Fi shows Network, Status and Password, with search and technical information behind Details. Empty app history explains why no data exists and offers Enable app tracking on Windows. Windows approval restarts NetCroc with capture permission; older per-app usage cannot be reconstructed. Empty periods hide the unused chart.
 
@@ -44,16 +44,16 @@ Keep-alive is optional and does not guarantee faster downloads or lower game pin
 
 ## Get started
 
-**Download:** use the runnable packages on the [GitHub Releases page](https://github.com/4Raisan/NetCroc/releases). Cross-platform packages are initially marked **beta** while live network-changing operations receive further hardware testing.
+**Download:** use the runnable packages on the [GitHub Releases page](https://github.com/4Raisan/NetCroc/releases). macOS/Linux live network operations still require further hardware testing.
 
 | Platform | Package | Requirements |
 |---|---|---|
-| Windows x64 | `NetCroc-windows-x64.exe` | Windows 10/11; Python bundled. |
-| macOS Apple Silicon | `NetCroc-macos-arm64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized beta. |
-| macOS Intel | `NetCroc-macos-x64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized beta. |
+| Windows x64 | `NetCroc-v0.4.6-windows-x64.exe` | Windows 10/11; Python bundled. |
+| macOS Apple Silicon | `NetCroc-macos-arm64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized build. |
+| macOS Intel | `NetCroc-macos-x64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized build. |
 | Linux x64 | `NetCroc-linux-x64.tar.gz` | Extract and run `./NetCroc`; desktop Linux with glibc 2.35+ (Ubuntu 22.04+). |
 
-macOS may require an explicit Open approval in Privacy & Security for this unnotarized beta. The builds include an ad-hoc integrity signature, not a trusted Developer ID signature or notarization. Linux needs a graphical desktop; the bundled binary does not include optional system networking tools.
+macOS may require an explicit Open approval in Privacy & Security for this unnotarized build. The builds include an ad-hoc integrity signature, not a trusted Developer ID signature or notarization. Linux needs a graphical desktop; the bundled binary does not include optional system networking tools.
 
 **From source:** On Windows, run `NetCroc-Setup.bat` to check Python/Tk, create a local virtual environment, install the pinned requirements, and launch the app. Install or repair Python 3.12–3.14 from python.org if the helper asks. The packaged EXE already bundles Python.
 
@@ -142,15 +142,16 @@ NetCroc/
 ├── tests/               Automated tests; synthetic credentials and local fixtures
 ├── tools/               Build/check scripts and opt-in live test utilities
 ├── docs/                Setup guides, research and dated validation notes
-├── assets/              Current icon/diagram and local logo concept galleries
+├── assets/              Current icon, diagram and README artwork
 ├── .github/workflows/   Windows CI
 ├── releases/            Local EXE/launcher; ignored by Git
 ├── test-artifacts/      Local test reports/downloads; ignored by Git
+├── Deep-Shit/           Archived old builds, stale evidence and Python caches; ignored by Git
 ├── .gitignore
 └── README.md
 ```
 
-`netcroc/platforms.py` contains OS helpers; `posix_network.py` contains macOS/Linux networking backends. Start reading the code at `src/app.py`, then `src/netcroc/ui.py` and `dashboard.py`. The [structure guide](docs/STRUCTURE.md) maps the remaining modules and explains the tools. Logo explorations are drafts, not the installed app icon.
+`netcroc/platforms.py` contains OS helpers; `posix_network.py` contains macOS/Linux networking backends. Start reading the code at `src/app.py`, then `src/netcroc/ui.py` and `dashboard.py`. The [structure guide](docs/STRUCTURE.md) maps the remaining modules and explains the tools.
 
 ## Develop and verify
 
@@ -178,13 +179,15 @@ Build and verify a native runnable package on its target operating system (PyIns
 .venv/bin/python tools/package_release.py
 ```
 
-Verified runnable packages are written to `test-artifacts/packages/`. Each build checks bundled Python source and launches read-only GUI/DNS helper diagnostics before packaging. The Windows-only `tools/release.py --build` remains available for the local EXE workflow.
+Verified runnable packages are written to `test-artifacts/packages/`. Each build checks bundled Python source and launches read-only GUI/DNS helper diagnostics before packaging. The Windows-only `tools/release.py --build` is the local EXE workflow: it writes the versioned build `releases/NetCroc-v<version>-dev-<os>-<arch>.exe`, using the version in `src/netcroc/updates.py`, and then refreshes `releases/NetCroc.exe` as the compatibility target that `releases/NetCroc.bat` launches. A running app locks `NetCroc.exe`, so that refresh is best effort: the versioned build is still produced and no previous EXE is deleted.
 
 [Desktop CI](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml) tests Windows Python 3.12/3.13/3.14, Ubuntu x64, macOS Apple Silicon and macOS Intel. Platform-specific API tests run on their native OS; portable backends have separate mocked-command and child-crash tests. Linux GUI checks use Xvfb.
 
 A separate native build matrix creates four runnable packages. Publishing is an explicit manual dispatch and runs only after all tests and package verification pass. Only the publish job has repository write permission. No physical DNS/Wi-Fi changes or provider credentials run in CI, and no source archives are uploaded as release assets (GitHub supplies its own automatic source links).
 
 ### Verification status
+
+As of 2 November 2026 the local suite runs **215 tests with six platform-specific skips** after the Wi-Fi, DNS, WireGuard and lifecycle fixes.
 
 The 26 October 2026 validation recorded **131 passing local tests** and successful GitHub CI for the published implementation. Controlled live tests covered administrator traffic capture, DNS apply/restore, failure rollback and the real 90-second crash watchdog. A Proton Free WireGuard profile changed the observed exit from Sri Lanka to the Netherlands; native IPv6/UDP checks and a separate browser DNS test also succeeded. These are bounded observations, not universal provider or leak certification.
 
@@ -202,6 +205,40 @@ Windows installs use `%LOCALAPPDATA%\NetCroc`; macOS uses `~/Library/Application
 
 The legacy instance-lock identifier also remains intentional. Saving the sign-in preference replaces the old startup entry with `NetCroc`; until then, an old entry may still point to the previous executable. Reorganizing documentation does not migrate local data or change startup/network settings.
 
-The Home screen’s **Check setup** button checks optional WireGuard and the SSH/VLESS routing core. Use its repair button to download the pinned, SHA-256-verified core; WireGuard opens its official installer page. Neither is required for basic monitoring.
+The sidebar’s **Check setup** button checks optional WireGuard and the SSH/VLESS routing core. Use its repair button to download the pinned, SHA-256-verified core; WireGuard opens its official installer page. Neither is required for basic monitoring.
 
-**About and updates:** The sidebar shows the development version and checks the official GitHub release list in the background, including beta releases. The check sends a request to GitHub; it never downloads or installs an update. When a newer release is found, use the green update button to review downloads, or Star on GitHub to open the repository.
+**Version and updates:** The sidebar shows the current version and checks the official GitHub release list in the background, including prereleases. The check sends a request to GitHub; it never downloads or installs an update. When a newer release is found, use the green update button to review downloads, or Star on GitHub to open the repository.
+
+## Desktop interface
+
+Home, connection checks, live traffic, usage, Wi-Fi and tray settings are available from the sidebar. Check setup is in the sidebar. Live traffic has one app-tracking action and a blue download / green upload legend. Usage charts show the three largest entries; the table retains all recorded entries. Tray options stay visible.
+
+Appearance includes Light, Mint, Sand, Dark, Graphite and Slate. NetCroc checks for releases asynchronously at startup and displays **Go to latest update** only when a newer version is available. The current version remains visible in the sidebar. Windows are kept inside the current monitor work area when displays change.
+
+Local Windows builds use `python tools/release.py --build`. The versioned executable in `releases/` is the primary build; `NetCroc.exe` is a compatibility copy and can remain older if Windows locks it while running. Verify a build with `python tools/verify_bundle.py <exe-path>`.
+
+### Rounded desktop styling
+
+Controls use rounded surfaces, visible outlines and hover, focus, pressed and disabled states. The application logo uses a white rounded tile in the header and Windows executable. Local Windows version: 0.4.1.
+
+WireGuard onboarding: choose **Open Proton VPN**, create/sign in to an account, open Downloads → WireGuard configuration, generate and save the `.conf`, then use **Import profile** in NetCroc. Choose a server allowed by your provider plan. The sidebar uses quiet navigation with a selected-page highlight. Empty VPN/VLESS tables remain expanded. Local Windows version: 0.4.1.
+
+Theme consistency: dropdowns (including their menus), alternating table rows, text logs, scrollbars and connection-check backgrounds follow the selected palette. Local Windows version: 0.4.1.
+
+Edge overlays stay open while the pointer is at the activation edge or over the compact header controls. Moving into the data area or away dismisses them after a short delay. Floating mode remains persistent and draggable.
+
+## Current local Windows build
+
+Run `releases/NetCroc-v0.4.6-windows-x64.exe` or `releases/NetCroc.exe` (the identical compatibility copy). `NetCroc.bat` launches the compatibility copy. `NetCroc-Setup.bat` checks source-run prerequisites; the EXE already bundles Python. Rebuild with `python tools/release.py --build`. Superseded builds and caches are archived in `Deep-Shit/`, excluded from Git. No GitHub release is implied by a local build.
+
+Saved Wi-Fi passwords display automatically when the OS grants access. Copy controls remain beside each name and password. Overlay sizes use Compact, Standard and Wide presets. The sidebar distinguishes Installed from Latest (fetched automatically from GitHub, including prereleases); unavailable checks are labelled accurately. Current local version: 0.4.1.
+
+Version status is shown on one line: installed version and Latest/Outdated after a GitHub check. Install WireGuard opens the official client installer, and becomes disabled when installed. The live graph uses monotonic timestamps for its 90-second axis and retains its seven canvas objects between refreshes. Current local version: 0.4.2.
+
+Local 0.4.3 preserves the previous application behavior with its updated version. Local 0.4.4 checks GitHub for updates at startup and each time the full GUI is reopened, including from the tray and overlay. Checks run in the background and concurrent requests are coalesced. Diagnostic runs do not request updates. Neither local version has been published to GitHub.
+
+## Managed WireGuard dependency (Windows)
+
+NetCroc bundles the architecture-matched official WireGuard MSI when building Windows EXEs. Setup & repairs and VPN → More → Install / update WireGuard manage the dependency inside NetCroc. The installer checks the current official version, verifies Windows trust and the WireGuard LLC publisher signature, and invokes Windows Installer after approval. Installation suppresses the separate WireGuard UI and automatic reboot. Existing active WireGuard tunnels must be disconnected before upgrading. Accounts and `.conf` profiles still come from your VPN provider. Missing-client Connect opens setup. No system installation occurs merely by starting NetCroc. Local version: 0.4.5.
+
+Local/release 0.4.6: the sidebar update action is shortened to **Update available ↗**, with rounded corners and readable hover/focus states. Windows executable: `releases/NetCroc-v0.4.6-windows-x64.exe`.
