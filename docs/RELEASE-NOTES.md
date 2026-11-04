@@ -1,22 +1,12 @@
-# NetCroc 0.4.1
+# NetCroc 0.4.7
 
-Local Windows build: `releases/NetCroc-v0.4.1-windows-x64.exe`.
-`releases/NetCroc.exe` is the compatibility copy.
+- VPN, SSH/TLS and VLESS pages show required-tool status and direct setup actions.
+- WireGuard installation and provider-profile creation are separate, clearly labelled steps.
+- Main window and setup/error popups center within the monitor work area.
+- Sandbox Wi-Fi limitations appear on the Wi-Fi page instead of interrupting Home.
+- Errors use plain-language explanations, next steps and expandable technical details.
+- Windows uses a single versioned EXE; Linux/macOS packages include user-local installation scripts.
+- README reorganized with a visible architecture diagram and concise source/setup guidance.
+- Fixed previous CI failures caused by platform test isolation and missing-client guard ordering.
 
-- Simplified sidebar and everyday monitoring pages.
-- Rounded controls, light/dark themes and consistent readable fields and tables.
-- White rounded application logo tile.
-- WireGuard import guide and expanded tunnel profile tables.
-- Compact edge-overlay hover area with accessible header controls.
-- Work-area sizing guards, setup checks and automatic update notification.
-- Monitoring, DNS recovery and credential-handling fixes.
-
-Windows GUI and packaged smoke checks are run locally. Real macOS/Linux hardware validation, ISP billing behavior and provider-specific tunnel connectivity are separate checks and are not established by this build. This local version has not been published to GitHub Releases.
-
-## Local 0.4.4
-
-Reopening the full GUI checks for available GitHub releases in the background. Existing in-flight checks are reused. Local 0.4.3 is the version-only predecessor; GitHub remains at 0.4.2.
-
-## 0.4.6
-
-Shorter sidebar update action with a dedicated rounded style. Primary-action hover/focus colors keep white labels readable. WireGuard dependency management remains included.
+Windows and Linux local checks and native GitHub Actions checks are reported with the release. Headless/macOS CI is not physical hardware coverage: macOS network-changing operations remain experimental; ISP billing and provider connectivity require real-network checks. macOS packages are ad-hoc signed and not notarized by Apple.

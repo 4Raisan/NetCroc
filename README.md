@@ -1,244 +1,84 @@
-<p align="center">
-  <img src="assets/netcroc-banner.svg" alt="NetCroc — Your quiet network companion." width="760">
-</p>
+<p align="center"><img src="assets/netcroc.png" width="96" alt="NetCroc logo"></p>
 
-[Logo SVG](assets/netcroc.svg) · [Logo PNG](assets/netcroc.png) · [Banner SVG](assets/netcroc-banner.svg) · [Banner PNG](assets/netcroc-banner.png)
+# NetCroc — Your quiet network companion.
 
-# NetCroc
+A desktop network monitor with live speeds, usage history, saved Wi-Fi and optional connection tools.
 
-**Your quiet network companion.**
+[Download the latest release](https://github.com/4Raisan/NetCroc/releases/latest) · [Setup guide](#getting-started) · [Technical structure](docs/STRUCTURE.md)
 
-[![Desktop CI](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml/badge.svg)](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml)
+## Getting started
 
-A desktop app for Windows, macOS and Linux for checking connections, watching download/upload speeds, tracking usage, managing saved Wi-Fi and connecting through your own VPN or tunnel profiles.
+**Windows:** download the versioned `.exe` from Releases and open it. Python is included. NetCroc starts monitoring automatically; optional VPN tools do not need to be installed for monitoring.
 
-## Simple everyday controls
+**macOS/Linux:** native packages, where available, are listed on Releases. For source setup, use the steps below. New platform behavior still needs native hardware validation; see the support table.
 
-The main sidebar opens **Home**, **Connection checks**, **Live traffic**, **Usage**, **Wi-Fi** and **Tray mode**. DNS, VPN, SSH/TLS, VLESS and website tests stay in the Tools group below. The app uses its own draggable header, minimize/maximize/close buttons and resize grip. Close sends it to the tray by default; Tray mode includes an explicit Quit action and a close-behavior preference.
-
-Usage shows readable application names, groups unavailable process identities as **Unattributed traffic**, and offers **All / 1 MB+ / 5 MB+** display filters. Totals retain every recorded byte. Details shows the original file paths or identities; CSV retains unfiltered source records. Historic PIDs are never reassigned to today's running processes. The chart resizes with the page, and tables scroll horizontally when necessary.
-
-Tray mode provides **Left edge**, **Right edge**, **Top middle** and **Static** overlays. Edge overlays appear on hover and hide after the mouse leaves. Static overlays retain a dragged position. Speeds, top apps, Wi-Fi/ISP and VPN/exit information are selectable. The tray menu can toggle the overlay. Overlay mode, opacity, position and information choices are saved locally. No global input hook or packet-payload capture is used.
-
-VPN indication is a best-effort active-interface signal, not proof of protection. Exit country comes from a bounded public-IP lookup when a tunnel interface is observed, or through the Check public exit country button. Country checks are cached/throttled and are not a DNS-leak test; app-only proxies may exit elsewhere. No country is inferred from a saved profile name.
-
-The current Windows build is **0.4.6**. Download 0.4.6 from GitHub Releases. Its tag still points to the older published source snapshot; see the release source-archive notice. Normal monitoring uses real adapter speeds and recorded history.
-
-Automatic ISP mode uses a bounded HTTPS [public-network lookup](https://ipwho.is/), cached for 30 minutes on the same network. Recognized Sri Lankan providers select the keep-alive preset before activation; manual selection disables automatic mode. An unknown/unavailable lookup keeps the existing selection. A VPN may identify its exit provider instead of the SIM brand. No SSIDs, Wi-Fi passwords or app history are sent to the lookup service.
-
-Wi-Fi shows Network, Status and Password, with search and technical information behind Details. Empty app history explains why no data exists and offers Enable app tracking on Windows. Windows approval restarts NetCroc with capture permission; older per-app usage cannot be reconstructed. Empty periods hide the unused chart.
-
-## What you can do
-
-| Area | Features |
+| What you want | Where to go |
 |---|---|
-| Connection checks | HTTP HEAD or ICMP, ISP presets and custom targets, 1/5/10/15/30-second intervals, optional smart intervals and a six-minute OFF/ON comparison. |
-| Live traffic | Adapter and per-app download/upload speeds, a live graph and usage bars. Speeds use **bytes per second**: KB/s below 2 MB/s, MB/s from 2 MB/s, and GB/s from 1,024 MB/s. Units use 1,024-based conversion. |
-| Usage history | **Last 30 days**, **This month** and **Last month**, app/network breakdowns and CSV export. Keeps 62 days of recorded data. |
-| DNS | Benchmark resolvers, explicitly apply a selection, restore the original settings and recover through an independent rollback watchdog. |
-| Saved Wi-Fi | View saved networks and passwords when Windows permits, connect, forget and review per-network usage. |
-| VPN and tunnels | WireGuard, SSH/TLS and VLESS profiles, encrypted credential storage, connection controls and public-IP checks. |
-| Desktop controls | System tray, saved preferences and optional Windows sign-in startup. |
+| Current download/upload speed | Home or Live traffic |
+| App/network usage over time | Usage: Last 30 days, This month or Last month |
+| Saved Wi-Fi names/passwords | Wi-Fi; requires OS permission and a Wi-Fi service |
+| Find missing components | Check setup |
+| Use a WireGuard VPN | VPN → Install/update WireGuard → get/import a provider `.conf` → Connect |
+| Use SSH/TLS or VLESS | Open its page, install required tools if shown, add your server account/profile |
 
-Keep-alive is optional and does not guarantee faster downloads or lower game ping. DNS response times are not bandwidth measurements. NetCroc does not provide ISP package bypass, shared VPN accounts or built-in VPN servers.
+### Why are extra tools needed?
 
-## Get started
+- **WireGuard** creates the encrypted VPN adapter and connection. **Proton or another provider** supplies the account, server and `.conf` profile. NetCroc manages installation/updates of the official signed client on Windows.
+- **Routing core (sing-box)** powers VLESS and whole-PC SSH routing. SSH local-proxy mode works without the routing core. The relevant page shows whether setup is needed.
+- Administrator approval is required for system VPN/DNS changes. Installing tools does not automatically connect a VPN.
 
-**Download:** use the runnable packages on the [GitHub Releases page](https://github.com/4Raisan/NetCroc/releases). macOS/Linux live network operations still require further hardware testing.
+## What NetCroc records
 
-| Platform | Package | Requirements |
-|---|---|---|
-| Windows x64 | `NetCroc-v0.4.6-windows-x64.exe` | Windows 10/11; Python bundled. |
-| macOS Apple Silicon | `NetCroc-macos-arm64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized build. |
-| macOS Intel | `NetCroc-macos-x64.zip` | Extract and open `NetCroc.app`; ad-hoc signed, unnotarized build. |
-| Linux x64 | `NetCroc-linux-x64.tar.gz` | Extract and run `./NetCroc`; desktop Linux with glibc 2.35+ (Ubuntu 22.04+). |
+Speeds are **bytes per second** (KB/s, MB/s, GB/s), not bits. Usage history is kept for 62 days while the app runs. Earlier missing history cannot be recovered. Per-app tracking needs Windows capture permission; adapter totals can include local-network traffic. VPN traffic can be attributed to the tunnel application.
 
-macOS may require an explicit Open approval in Privacy & Security for this unnotarized build. The builds include an ad-hoc integrity signature, not a trusted Developer ID signature or notarization. Linux needs a graphical desktop; the bundled binary does not include optional system networking tools.
+Saved passwords display only where the OS permits access. Passwords are not written to usage history. Windows Sandbox generally exposes a virtual Ethernet adapter, so unavailable Wi-Fi is an expected limitation there.
 
-**From source:** On Windows, run `NetCroc-Setup.bat` to check Python/Tk, create a local virtual environment, install the pinned requirements, and launch the app. Install or repair Python 3.12–3.14 from python.org if the helper asks. The packaged EXE already bundles Python.
+## Optional connection tools
 
-For manual setup on any platform, install Python 3.12–3.14 with Tcl/Tk, then run from the project root:
+- Connection checks can help investigate idle stalls; they do not guarantee faster internet.
+- DNS testing compares lookup times. Applying DNS is explicit, with saved settings and recovery protection.
+- WireGuard, SSH/TLS and VLESS use your own provider profiles/accounts. NetCroc supplies no VPN service or free ISP data.
+- Tray overlays support left, right, top and floating placement. Edge overlays stay open near their header controls; floating overlays stay where placed.
 
-```powershell
-# Windows
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r src/requirements.txt
-.\.venv\Scripts\python.exe src/app.py
-```
+## Platform support and limits
 
-```bash
-# macOS / Linux
-python3 -m venv .venv
-.venv/bin/python -m pip install -r src/requirements.txt
-.venv/bin/python src/app.py
-```
-
-On Ubuntu, install `python3-venv python3-tk` first. Native profile encryption uses macOS Keychain or a Linux Secret Service keyring; a locked/missing keyring produces an error rather than a plaintext fallback. The app should run as the normal desktop user.
-
-Quit any earlier Fastlane/NetCroc instance from its tray first. Windows retains the compatibility lock; macOS/Linux use an OS file lock to prevent two history recorders. Tray availability depends on the desktop; without a tray, keep the window open.
-
-### Administrator access
-
-Ordinary connection checks, adapter traffic, history, profile import and DNS benchmarking run without elevation. Windows per-app capture, DNS changes, WireGuard service controls and whole-PC routing require administrator access.
-
-On macOS/Linux, DNS and WireGuard operations request native OS authorization (`osascript` / `pkexec`). No administrator passwords are entered into NetCroc. The elevated DNS watchdog starts before settings change. Whole-PC SSH/VLESS uses an independently supervised privileged worker, so the GUI and profile keyring stay under the normal user. Disconnect requests do not need a second authorization prompt. The worker checks desktop-process identity and stops the routing engine if the desktop process exits or crashes. Local SOCKS5 needs no elevation.
-
-### Platform features and optional tools
-
-| Feature | Windows | macOS | Linux |
+| Area | Windows | Linux | macOS |
 |---|---|---|---|
-| HTTP/ICMP, adapter speeds, history/CSV | Native | Native | Native |
-| Per-app byte attribution | ETW, administrator | Optional TShark + capture/socket permissions | Optional TShark + capture/socket permissions |
-| Saved Wi-Fi | WLAN API | `networksetup`; reveal password through Keychain | NetworkManager `nmcli`; reveal with OS permission |
-| DNS settings / recovery | Windows adapter settings | `networksetup`, native authorization | NetworkManager, `pkexec` authorization |
-| WireGuard | Official Windows client | `wg-quick`, `wg`, `wireguard-go` | `wg-quick`, `wg`; DNS may need `resolvconf` |
-| SSH/TLS local SOCKS5 | Included | Included | Included |
-| VLESS local SOCKS5 | Verified optional sing-box | Verified native sing-box | Verified native sing-box |
-| Whole-PC SSH/VLESS | Administrator; live Windows TUN lab passed (local server, clean teardown) | OS authorization; experimental, live TUN validation pending | OS authorization; real isolated TUN/crash lab passed |
-| Sign-in startup | Registry entry | LaunchAgent | XDG autostart entry |
+| Monitoring and desktop GUI | Locally tested | Automated tests/headless GUI where available | CI coverage; native hardware review pending |
+| WireGuard setup | Signed official MSI managed in NetCroc | Install `wireguard-tools` through your package manager | Install `wireguard-tools` through Homebrew |
+| Saved Wi-Fi | Requires WLAN service/hardware and OS permission | Requires NetworkManager/tool availability | Requires system Wi-Fi tools and authorization |
+| Whole-PC tunnel operations | Requires administrator approval | Requires root authorization; isolated lab checks are separate | Requires native validation; experimental |
 
-TShark attribution captures metadata on one default interface, excludes local destinations and omits unresolved/ambiguous sockets. Short-lived connections, shared UDP sockets and capture loss can make per-app totals incomplete; adapter totals remain independent. Wi-Fi passwords on macOS/Linux are revealed only after an explicit click, never during startup.
+macOS builds are not Developer ID signed/notarized. Windows/Linux checks do not establish that every feature works on macOS. Provider connectivity and ISP billing must be tested on the actual network.
 
-Run network-changing tests while you can recover locally. Importing a profile never connects it. No physical macOS/Linux DNS/Wi-Fi/provider VPN behaviour is certified by hosted CI. Linux additionally runs a real TUN lab in a fresh network namespace with no external network.
+## Source setup
 
-## Usage periods
+Requires **Python 3.12–3.14**, Tk and a graphical desktop.
 
-| Selection | Time range |
-|---|---|
-| Last 30 days | The current moment back exactly 30 days. |
-| This month | The first day of this month at midnight through now. |
-| Last month | The complete previous calendar month. |
+- Windows: run `NetCroc-Setup.bat`.
+- Linux: `bash NetCroc-Setup.sh`.
+- macOS: `bash NetCroc-Setup.command` (or make the command executable and open it).
+- Check Unix prerequisites without installation: `bash NetCroc-Setup.sh --check`.
 
-Recording happens while NetCroc is running. Missing time cannot be reconstructed, and the app's counters are not an ISP billing statement. Older daily records are preserved without inventing their time of day. See [validation notes](docs/STUDY-AND-TESTS.md) for the measurement limits.
+Ubuntu/Debian prerequisites: `sudo apt install python3-venv python3-tk`. macOS with Homebrew: `brew install python@3.13 python-tk@3.13`; use `NETCROC_PYTHON=python3.13 bash NetCroc-Setup.sh`.
 
-## VPN and tunnel setup
+## Architecture
 
-| Mode | Prerequisite | Setup |
-|---|---|---|
-| WireGuard | Official Windows client or POSIX WireGuard tools, and your own `.conf` | [Free-account setup and tested behaviour](docs/FREE-VPN-SETUP.md) |
-| SSH / SSH over TLS | Your own server account; optional verified routing core for whole-PC TCP | [SSH/TLS guide](docs/SSH-TLS.md) |
-| VLESS / REALITY | Compatible provider/server account and the optional verified sing-box core | [VLESS guide](docs/VLESS.md) |
+![NetCroc architecture: desktop UI, background workers, local storage and operating-system tools](assets/architecture.svg)
 
-VLESS supports TCP, WebSocket, gRPC and HTTPUpgrade, plus REALITY and Vision. It uses sing-box; NetCroc does not install an Xray server or 3x-ui panel. Local SOCKS5 affects only apps configured to use it. Whole-PC routing needs elevation. SSH whole-PC mode carries TCP and tunneled DNS; other UDP/ICMP is blocked.
+The GUI runs separately from background network tasks. Usage is stored locally in SQLite; provider credentials use platform encryption/key storage. Optional tools call operating-system services with explicit authorization.
 
-SSH SOCKS connections use a configurable idle timeout (`0` keeps idle connections alive using TCP keepalive) so long-running applications are not dropped. SSH over TLS lets you choose between trusting system CAs plus your custom CA, or **only** your custom CA. The optional routing core is verified against executable hashes pinned in the code, not a hash file stored beside the binary.
-
-WireGuard profiles are encrypted for your OS account (Windows DPAPI or an AES-GCM key in the OS keyring). On Windows, connecting creates a named service and machine-encrypted runtime configuration accessible to Administrators and Local System. POSIX wg-quick uses a root-owned mode-0600 plaintext runtime file inside a mode-0700 folder in `/run/netcroc` or `/var/run/netcroc`; it is removed on a successful disconnect and retained if needed for recovery. Script hooks and unsupported profile extensions are rejected. Original imported files remain untouched and can contain private credentials: keep them out of Git.
-
-**Closing NetCroc stops SSH/VLESS sessions, but leaves an active WireGuard tunnel running.** Use Disconnect in the VPN tab to remove the tunnel and its runtime configuration. Windows WireGuard services use manual startup. NetCroc does not add a persistent kill switch.
-
-Save a baseline IP before connecting and check it afterward. A changed IP alone does not establish DNS/IPv6 leak protection or different ISP charging. Automatic server provisioning and a built-in Singapore VPN are not implemented.
-
-## Project structure
-
-The root stays small: **six maintained folders**, two generated local folders and this README/configuration.
+## Development and releases
 
 ```text
-NetCroc/
-├── src/                 Application entry point, dependencies and Python package
-│   ├── app.py
-│   ├── requirements.txt
-│   └── netcroc/         UI, monitoring, storage and Windows/POSIX backends
-├── tests/               Automated tests; synthetic credentials and local fixtures
-├── tools/               Build/check scripts and opt-in live test utilities
-├── docs/                Setup guides, research and dated validation notes
-├── assets/              Current icon, diagram and README artwork
-├── .github/workflows/   Windows CI
-├── releases/            Local EXE/launcher; ignored by Git
-├── test-artifacts/      Local test reports/downloads; ignored by Git
-├── Deep-Shit/           Archived old builds, stale evidence and Python caches; ignored by Git
-├── .gitignore
-└── README.md
+python -m unittest discover -s tests
+python tools/release.py --check
+python tools/release.py --build
+python tools/package_release.py
 ```
 
-`netcroc/platforms.py` contains OS helpers; `posix_network.py` contains macOS/Linux networking backends. Start reading the code at `src/app.py`, then `src/netcroc/ui.py` and `dashboard.py`. The [structure guide](docs/STRUCTURE.md) maps the remaining modules and explains the tools.
+The Windows local output is one versioned EXE, currently `releases/NetCroc-v0.4.7-windows-x64.exe`. There is no duplicate unversioned EXE. `NetCroc.bat` launches the current versioned file. `tools/package_release.py` builds on the host OS; GitHub Actions provides native Windows, Linux and macOS runners. Build dependencies include PyInstaller 6.22.3.
 
-## Develop and verify
+Source and release history are distinct: older published release tags may refer to an earlier source snapshot, as disclosed in those release notes. Generated evidence and archived experiments stay in ignored `test-artifacts/` and `Deep-Shit/` folders.
 
-Use the virtual environment created above:
-
-```powershell
-.\.venv\Scripts\python.exe tools/release.py --check
-# Optional verified core download; enables native VLESS loopback tests.
-# This checks configuration without changing routes or DNS.
-.\.venv\Scripts\python.exe tools/check_ssh_routing.py
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
-```
-
-Build and verify a native runnable package on its target operating system (PyInstaller is not a cross-compiler):
-
-```powershell
-# Windows
-.\.venv\Scripts\python.exe -m pip install PyInstaller==6.22.3
-.\.venv\Scripts\python.exe tools/package_release.py
-```
-
-```bash
-# macOS / Linux
-.venv/bin/python -m pip install PyInstaller==6.22.3
-.venv/bin/python tools/package_release.py
-```
-
-Verified runnable packages are written to `test-artifacts/packages/`. Each build checks bundled Python source and launches read-only GUI/DNS helper diagnostics before packaging. The Windows-only `tools/release.py --build` is the local EXE workflow: it writes the versioned build `releases/NetCroc-v<version>-dev-<os>-<arch>.exe`, using the version in `src/netcroc/updates.py`, and then refreshes `releases/NetCroc.exe` as the compatibility target that `releases/NetCroc.bat` launches. A running app locks `NetCroc.exe`, so that refresh is best effort: the versioned build is still produced and no previous EXE is deleted.
-
-[Desktop CI](https://github.com/4Raisan/NetCroc/actions/workflows/windows-ci.yml) tests Windows Python 3.12/3.13/3.14, Ubuntu x64, macOS Apple Silicon and macOS Intel. Platform-specific API tests run on their native OS; portable backends have separate mocked-command and child-crash tests. Linux GUI checks use Xvfb.
-
-A separate native build matrix creates four runnable packages. Publishing is an explicit manual dispatch and runs only after all tests and package verification pass. Only the publish job has repository write permission. No physical DNS/Wi-Fi changes or provider credentials run in CI, and no source archives are uploaded as release assets (GitHub supplies its own automatic source links).
-
-### Verification status
-
-As of 2 November 2026 the local suite runs **215 tests with six platform-specific skips** after the Wi-Fi, DNS, WireGuard and lifecycle fixes.
-
-The 26 October 2026 validation recorded **131 passing local tests** and successful GitHub CI for the published implementation. Controlled live tests covered administrator traffic capture, DNS apply/restore, failure rollback and the real 90-second crash watchdog. A Proton Free WireGuard profile changed the observed exit from Sri Lanka to the Netherlands; native IPv6/UDP checks and a separate browser DNS test also succeeded. These are bounded observations, not universal provider or leak certification.
-
-On 27 October, the expanded Windows suite passed 155 test cases (five POSIX-only cases skipped). A real isolated Linux lab passed SSH and VLESS whole-PC data forwarding, disconnect cleanup and cleanup after a controlling-process crash. These are synthetic local accounts in a network namespace, not overseas provider tests or physical network certification.
-
-The original 24-hour observation remains failed: about 18.7 hours were sampled with three observer gaps and no database-read errors. Windows power events overlap the gap periods, but the old observer did not log enough timing detail to attribute every gap conclusively. The revised observer logs wall/awake time separately, preserves gap records, supports a 24-awake-hour target and an optional thread-scoped keep-awake request. Its short real Windows smoke test passed; that does not replace the long observation.
-
-Still incomplete: reliable switching between two internet-connected Wi-Fi networks, Windows 10 compatibility, sleep/resume recovery, longer stability testing, ISP charging checks and leak testing on a native IPv6 access network. The 24-hour observation completed on 27 October but failed its coverage threshold: about 18.7 hours were sampled, with three sampling gaps and no database-read errors. Sleep/suspension gaps remain unknown time, not zero usage.
-
-See [test evidence and limits](docs/STUDY-AND-TESTS.md), [network research](docs/NETWORK-RESEARCH.md) and [VPN research](docs/VPN-RESEARCH.md).
-
-## Local data and compatibility
-
-Windows installs use `%LOCALAPPDATA%\NetCroc`; macOS uses `~/Library/Application Support/NetCroc`; Linux uses `$XDG_DATA_HOME/netcroc` (default `~/.local/share/netcroc`). On Windows, if `%LOCALAPPDATA%\ConnectionTrayPreview` exists, NetCroc continues using it to preserve settings, history and pending DNS recovery. Wi-Fi passwords are not stored in the usage database.
-
-The legacy instance-lock identifier also remains intentional. Saving the sign-in preference replaces the old startup entry with `NetCroc`; until then, an old entry may still point to the previous executable. Reorganizing documentation does not migrate local data or change startup/network settings.
-
-The sidebar’s **Check setup** button checks optional WireGuard and the SSH/VLESS routing core. Use its repair button to download the pinned, SHA-256-verified core; WireGuard opens its official installer page. Neither is required for basic monitoring.
-
-**Version and updates:** The sidebar shows the current version and checks the official GitHub release list in the background, including prereleases. The check sends a request to GitHub; it never downloads or installs an update. When a newer release is found, use the green update button to review downloads, or Star on GitHub to open the repository.
-
-## Desktop interface
-
-Home, connection checks, live traffic, usage, Wi-Fi and tray settings are available from the sidebar. Check setup is in the sidebar. Live traffic has one app-tracking action and a blue download / green upload legend. Usage charts show the three largest entries; the table retains all recorded entries. Tray options stay visible.
-
-Appearance includes Light, Mint, Sand, Dark, Graphite and Slate. NetCroc checks for releases asynchronously at startup and displays **Go to latest update** only when a newer version is available. The current version remains visible in the sidebar. Windows are kept inside the current monitor work area when displays change.
-
-Local Windows builds use `python tools/release.py --build`. The versioned executable in `releases/` is the primary build; `NetCroc.exe` is a compatibility copy and can remain older if Windows locks it while running. Verify a build with `python tools/verify_bundle.py <exe-path>`.
-
-### Rounded desktop styling
-
-Controls use rounded surfaces, visible outlines and hover, focus, pressed and disabled states. The application logo uses a white rounded tile in the header and Windows executable. Local Windows version: 0.4.1.
-
-WireGuard onboarding: choose **Open Proton VPN**, create/sign in to an account, open Downloads → WireGuard configuration, generate and save the `.conf`, then use **Import profile** in NetCroc. Choose a server allowed by your provider plan. The sidebar uses quiet navigation with a selected-page highlight. Empty VPN/VLESS tables remain expanded. Local Windows version: 0.4.1.
-
-Theme consistency: dropdowns (including their menus), alternating table rows, text logs, scrollbars and connection-check backgrounds follow the selected palette. Local Windows version: 0.4.1.
-
-Edge overlays stay open while the pointer is at the activation edge or over the compact header controls. Moving into the data area or away dismisses them after a short delay. Floating mode remains persistent and draggable.
-
-## Current local Windows build
-
-Run `releases/NetCroc-v0.4.6-windows-x64.exe` or `releases/NetCroc.exe` (the identical compatibility copy). `NetCroc.bat` launches the compatibility copy. `NetCroc-Setup.bat` checks source-run prerequisites; the EXE already bundles Python. Rebuild with `python tools/release.py --build`. Superseded builds and caches are archived in `Deep-Shit/`, excluded from Git. No GitHub release is implied by a local build.
-
-Saved Wi-Fi passwords display automatically when the OS grants access. Copy controls remain beside each name and password. Overlay sizes use Compact, Standard and Wide presets. The sidebar distinguishes Installed from Latest (fetched automatically from GitHub, including prereleases); unavailable checks are labelled accurately. Current local version: 0.4.1.
-
-Version status is shown on one line: installed version and Latest/Outdated after a GitHub check. Install WireGuard opens the official client installer, and becomes disabled when installed. The live graph uses monotonic timestamps for its 90-second axis and retains its seven canvas objects between refreshes. Current local version: 0.4.2.
-
-Local 0.4.3 preserves the previous application behavior with its updated version. Local 0.4.4 checks GitHub for updates at startup and each time the full GUI is reopened, including from the tray and overlay. Checks run in the background and concurrent requests are coalesced. Diagnostic runs do not request updates. Neither local version has been published to GitHub.
-
-## Managed WireGuard dependency (Windows)
-
-NetCroc bundles the architecture-matched official WireGuard MSI when building Windows EXEs. Setup & repairs and VPN → More → Install / update WireGuard manage the dependency inside NetCroc. The installer checks the current official version, verifies Windows trust and the WireGuard LLC publisher signature, and invokes Windows Installer after approval. Installation suppresses the separate WireGuard UI and automatic reboot. Existing active WireGuard tunnels must be disconnected before upgrading. Accounts and `.conf` profiles still come from your VPN provider. Missing-client Connect opens setup. No system installation occurs merely by starting NetCroc. Local version: 0.4.5.
-
-Local/release 0.4.6: the sidebar update action is shortened to **Update available ↗**, with rounded corners and readable hover/focus states. Windows executable: `releases/NetCroc-v0.4.6-windows-x64.exe`.
+[Release notes](docs/RELEASE-NOTES.md) · [UI design decisions](docs/UI-DESIGN.md)
