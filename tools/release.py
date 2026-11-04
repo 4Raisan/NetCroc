@@ -74,46 +74,13 @@ def build():
         finally:
             staged.unlink(missing_ok=True)
         print('Versioned release build: ' + versioned.name)
-        compatibility = output / (CONFIG['exe'] + '.exe')
-        staged = compatibility.with_name(compatibility.name + '.new')
-        try:
-            shutil.copyfile(built, staged)
-            staged.replace(compatibility)
-            print('Compatibility launcher target updated: ' + compatibility.name)
-        except PermissionError:
-            print('Kept the existing ' + compatibility.name + ' because it is locked or not writable.'
-                  ' Quit the running app from its tray/menu to refresh it, or launch the versioned build.'
-                  ' No previous EXE was deleted.')
-        finally:
-            staged.unlink(missing_ok=True)
 
 def prepare():
     output = ROOT / 'releases'
     output.mkdir(exist_ok=True)
-    if CONFIG['exe']:
-        name = CONFIG['exe']
-        title = CONFIG['title']
-        launcher = f"""@echo off
-setlocal
-title {title}
-if not exist "%~dp0{name}.exe" (
-    echo ERROR: {name}.exe is missing from this folder.
-    echo FIX: Keep this BAT beside {name}.exe in releases.
-    echo Python is bundled in the EXE; no separate install is needed.
-    pause
-    exit /b 2
-)
-start "" /wait "%~dp0{name}.exe" %*
-set "result=%errorlevel%"
-if not "%result%"=="0" (
-    echo ERROR: {title} exited with code %result%.
-    echo FIX: Read the app error message. Check folder access and Windows Security protection history.
-    echo If damaged, replace the EXE with a fresh complete release.
-    pause
-)
-exit /b %result%
-"""
-        (output / (name + '.bat')).write_text(launcher, encoding='ascii')
+    name=asset_name()
+    launcher='@echo off\r\nstart "" "%~dp0'+name+'" %*\r\n'
+    (output/'NetCroc.bat').write_text(launcher,encoding='ascii')
     print('Runnable releases only; no source ZIPs or checksum files generated.')
 
 def check():

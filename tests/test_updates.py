@@ -11,11 +11,11 @@ class Response:
 class UpdateTests(unittest.TestCase):
  def test_beta_and_stable_order(self):
   self.assertGreater(updates.version_key('v0.4.0'),updates.version_key('v0.4.0-beta.3'))
-  self.assertGreater(updates.version_key('v0.4.7'),updates.version_key('v0.4.0-beta.3'))
+  self.assertGreater(updates.version_key('v0.4.8'),updates.version_key('v0.4.0-beta.3'))
   self.assertIsNone(updates.version_key('v0.4.0-unknown'))
  def test_releases_ignore_drafts_and_compare_versions(self):
-  releases=[{'tag_name':'v0.4.7','draft':False},{'tag_name':'v9.0.0','draft':True}]
+  releases=[{'tag_name':'v0.4.8','draft':False},{'tag_name':'v9.0.0','draft':True}]
   result=updates.check(lambda *args,**kwargs:Response(releases))
-  self.assertEqual(result['status'],'available');self.assertEqual(result['version'],'v0.4.7')
+  self.assertEqual(result['status'],'available');self.assertEqual(result['version'],'v0.4.8')
   self.assertEqual(updates.check(lambda *args,**kwargs:Response([{'tag_name':'v0.4.0-beta.3'}]))['status'],'current')
 if __name__=='__main__':unittest.main()
