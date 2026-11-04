@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish verified runnable packages as a prerelease
+        description: Publish verified runnable packages
         type: boolean
         default: false
       tag:
         description: Release tag (vX.Y.Z)
         type: string
-        default: v0.4.6
+        default: v0.4.7
 
 permissions:
   contents: read
@@ -122,6 +122,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         shell: bash
         run: |
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]] || exit 2
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]] || exit 2
           test "$(find runnable-packages -type f | wc -l)" -eq 4
-          gh release create "$RELEASE_TAG" runnable-packages/* --target "$GITHUB_SHA" --prerelease --title "NetCroc $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md
+          FLAGS=(--latest)
+          if [[ "$RELEASE_TAG" == *-beta.* ]]; then FLAGS=(--prerelease); fi
+          gh release create "$RELEASE_TAG" runnable-packages/* --target "$GITHUB_SHA" "${FLAGS[@]}" --title "NetCroc $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md
