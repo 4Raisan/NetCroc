@@ -11,9 +11,9 @@ on:
         type: boolean
         default: false
       tag:
-        description: Release tag (vX.Y.Z-beta.N)
+        description: Release tag (vX.Y.Z)
         type: string
-        default: v0.4.0-beta.2
+        default: v0.4.6
 
 permissions:
   contents: read

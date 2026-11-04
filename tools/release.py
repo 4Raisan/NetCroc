@@ -2,6 +2,7 @@
 import argparse
 import ast
 import os
+import platform
 import re
 import subprocess
 import shutil
@@ -12,6 +13,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = {"title":"NetCroc","exe":"NetCroc","entry":"src/app.py","icon":"netcroc.ico","mode":"windowed","data":""}
+
+def release_version():
+    """Same source of truth and format as tools/package_release.py."""
+    source=(ROOT/'src'/'netcroc'/'updates.py').read_text(encoding='utf-8')
+    match=re.search(r"^VERSION\s*=\s*['\"]([^'\"]+)",source,re.MULTILINE)
+    if not match:raise ValueError('Could not read the application version.')
+    return match.group(1).split('+',1)[0]
+
+def asset_name(kind=None):
+    arch='arm64' if platform.machine().lower() in ('arm64','aarch64') else 'x64'
+    version=release_version()
+    return f"{CONFIG['exe']}-v{version}-windows-{arch}.exe"
+
 
 def source_files():
     for item in sorted(ROOT.iterdir()):
@@ -63,12 +77,15 @@ def build():
         compatibility = output / (CONFIG['exe'] + '.exe')
         staged = compatibility.with_name(compatibility.name + '.new')
         try:
-            shutil.copyfile(Path(temporary) / 'output' / (CONFIG['exe'] + '.exe'), candidate)
-            candidate.replace(ROOT / 'releases' / (CONFIG['exe'] + '.exe'))
+            shutil.copyfile(built, staged)
+            staged.replace(compatibility)
+            print('Compatibility launcher target updated: ' + compatibility.name)
         except PermissionError:
-            raise SystemExit('Release EXE is locked or not writable. Quit the running app from its tray/menu, check folder permissions, then retry --build. The previous EXE remains available.')
+            print('Kept the existing ' + compatibility.name + ' because it is locked or not writable.'
+                  ' Quit the running app from its tray/menu to refresh it, or launch the versioned build.'
+                  ' No previous EXE was deleted.')
         finally:
-            candidate.unlink(missing_ok=True)
+            staged.unlink(missing_ok=True)
 
 def prepare():
     output = ROOT / 'releases'

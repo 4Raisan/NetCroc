@@ -15,10 +15,14 @@ import tempfile
 ROOT=Path(__file__).resolve().parents[1]
 
 def release_version():
+    """Same source of truth and format as tools/release.py."""
     source=(ROOT/'src/netcroc/updates.py').read_text(encoding='utf-8')
     match=re.search(r"^VERSION\s*=\s*['\"]([^'\"]+)",source,re.MULTILINE)
     if not match:raise ValueError('Could not read the application version.')
     return match.group(1).split('+',1)[0]
+
+def asset_name(version,label,arch,dev=False):
+    return f'NetCroc-v{version}-{label}-{arch}.exe'
 
 def main():
     parser=argparse.ArgumentParser()
@@ -35,26 +39,32 @@ def main():
         cmd+=['--onedir','--windowed'] if system=='darwin' else ['--onefile']+(['--windowed'] if system=='windows' else [])
         for resource in ('netcroc-transparent.png','netcroc-tray-eye.ico'):
             cmd+=['--add-data',str(ROOT/'assets'/resource)+os.pathsep+'assets']
-        # Pillow imports its Tk interpreter finder dynamically on Linux.
-        if system=='linux':cmd+=['--hidden-import','PIL._tkinter_finder']
-        if system=='windows':cmd+=['--icon',str(ROOT/'assets/netcroc.ico'),'--manifest',str(ROOT/'assets/netcroc.manifest')]
-        for dep in ('paramiko','cryptography','bcrypt','PyNaCl','cffi'):cmd+=['--copy-metadata',dep]
         if system=='windows':
             sys.path.insert(0,str(ROOT/'src'))
             from netcroc.wireguard_setup import bundle
             msi=bundle(work/'wireguard')
             cmd+=['--add-data',str(msi)+os.pathsep+'assets/wireguard']
+        # Pillow imports its Tk interpreter finder dynamically on Linux.
+        if system=='linux':cmd+=['--hidden-import','PIL._tkinter_finder']
+        if system=='windows':cmd+=['--icon',str(ROOT/'assets/netcroc.ico'),'--manifest',str(ROOT/'assets/netcroc.manifest')]
+        for dep in ('paramiko','cryptography','bcrypt','PyNaCl','cffi'):cmd+=['--copy-metadata',dep]
         if system!='windows':cmd+=['--copy-metadata','keyring','--collect-submodules','keyring.backends']
-        subprocess.run(cmd+[str(ROOT/'src/app.py')],check=True)
+        subprocess.run(cmd+[str(ROOT/'src/app.py')],check=True,cwd=temp)
         exe=work/'dist'/('NetCroc.app/Contents/MacOS/NetCroc' if system=='darwin' else 'NetCroc.exe' if system=='windows' else 'NetCroc')
         subprocess.run([sys.executable,str(ROOT/'tools/verify_bundle.py'),str(exe)],check=True)
         subprocess.run([sys.executable,str(ROOT/'tools/smoke_frozen.py'),str(exe)],check=True)
         version=release_version()
+        compatibility=None
         if system=='windows':
-            asset=output/('NetCroc.exe' if args.local else f'NetCroc-v{version}-{label}-{arch}.exe');shutil.copy2(exe,asset)
+            # The versioned file is the product. NetCroc.exe is only the compatibility target that
+            # releases/NetCroc.bat launches, and a locked one must never cost the build its output.
+            asset=output/asset_name(version,label,arch,dev=args.local);shutil.copy2(exe,asset)
             if args.local:
-                versioned_asset=output/f'NetCroc-v{version}-dev-{label}-{arch}.exe'
-                shutil.copy2(exe,versioned_asset)
+                candidate=output/'NetCroc.exe'
+                try:shutil.copy2(exe,candidate)
+                except PermissionError:
+                    print('Kept the existing NetCroc.exe: the running app locks it. Launch '+asset.name+' instead.')
+                else:compatibility=candidate
         elif system=='darwin':
             subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(work/'dist/NetCroc.app')],check=True)
             asset=output/f'NetCroc-v{version}-{label}-{arch}.zip'
@@ -63,11 +73,12 @@ def main():
             asset=output/f'NetCroc-v{version}-{label}-{arch}.tar.gz'
             with tarfile.open(asset,'w:gz') as tar:tar.add(exe,arcname='NetCroc')
         metadata={'asset':asset.name,'sha256':hashlib.sha256(asset.read_bytes()).hexdigest(),'source_match':True,'frozen_smoke_passed':True}
-        if system=='windows' and args.local:
-            metadata['versioned_asset']=versioned_asset.name
-            metadata['versioned_sha256']=hashlib.sha256(versioned_asset.read_bytes()).hexdigest()
-        (ROOT/'test-artifacts'/f'package-{label}-{arch}.json').write_text(json.dumps(metadata,indent=2),encoding='utf-8')
+        if compatibility is not None:
+            metadata['compatibility_asset']=compatibility.name
+            metadata['compatibility_sha256']=hashlib.sha256(compatibility.read_bytes()).hexdigest()
+        evidence=ROOT/'test-artifacts';evidence.mkdir(parents=True,exist_ok=True)
+        (evidence/f'package-{label}-{arch}.json').write_text(json.dumps(metadata,indent=2),encoding='utf-8')
         print('Verified runnable package: '+asset.name)
-        if system=='windows' and args.local:print('Versioned release copy: '+versioned_asset.name)
+        if compatibility is not None:print('Compatibility launcher target updated: '+compatibility.name)
 
 if __name__=='__main__':main()
