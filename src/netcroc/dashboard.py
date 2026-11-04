@@ -526,7 +526,7 @@ class Dashboard:
         self.vpn_status=self.vpn_line.var
         guide=ttk.Frame(tab,style='Card.TFrame',padding=12);guide.pack(fill='x',pady=(4,8))
         guide_top=ttk.Frame(guide,style='Card.TFrame');guide_top.pack(fill='x')
-        ttk.Label(guide_top,text='🔑 Get a WireGuard profile',style='Card.TLabel',font=('Segoe UI',11,'bold')).pack(side='left')
+        ttk.Label(guide_top,text='↗ Get a WireGuard profile',style='Card.TLabel',font=('Segoe UI',11,'bold')).pack(side='left')
         ttk.Button(guide_top,text='Open Proton VPN',command=lambda:webbrowser.open('https://account.protonvpn.com/downloads')).pack(side='right')
         ttk.Label(guide,text='① Sign in   →   ② Downloads → WireGuard → Save .conf   →   ③ Import below',style='Card.TLabel',wraplength=760).pack(anchor='w',pady=(8,0))
         dependency=ttk.Frame(tab);dependency.pack(fill='x',pady=4)
