@@ -270,6 +270,7 @@ class Shell:
         self.book.select(self.destinations[name])
         self.changed()
         if name=='Usage': self.dashboard.refresh_history()
+        if name=='VPN' and not self.app.diagnostic:self.dashboard.refresh_vpn()
 
     def open(self, name):
         self.book.select(self.pages[name])
