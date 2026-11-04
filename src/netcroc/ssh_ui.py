@@ -34,6 +34,8 @@ class SSHTab:
         notebook.add(tab, text='SSH / TLS')
         ttk.Label(tab, text='SSH / TLS tunnel', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
         ttk.Label(tab, text='1. Add your server account   2. Select it   3. Connect', wraplength=950).pack(anchor='w', pady=6)
+        from .tool_ui import DependencyNotice
+        self.dependency_notice=DependencyNotice(tab,app,self.routing,'Routing core for whole-PC mode (local SSH proxy works without it)')
         self.tree = ttk.Treeview(tab, columns=('server', 'mode', 'expiry'), show='tree headings', height=7)
         self.tree.heading('#0', text='Profile')
         for name in ('server', 'mode', 'expiry'):
@@ -143,6 +145,10 @@ class SSHTab:
             raise ValueError('Disconnect the current session before connecting another profile.')
         identifier = self.selected(); value = self.store.load(identifier)
         ssh.validate(value, credentials=True)
+        if value['routing']=='tun':
+            try:self.routing.verify()
+            except (OSError,ValueError):
+                self.app.shell.open_setup();self.line.error('Install the routing core in Setup before using whole-PC mode.');return
         if value['routing'] == 'tun' and not messagebox.askyesno('Whole-PC TCP' + _TUN_TAG,
             'This mode changes PC-wide routing and may interrupt remote access. UDP apps may stop working.' + (' It is experimental on this platform.' if _TUN_TAG else '') + ' Connect now?', default='no'):
             return

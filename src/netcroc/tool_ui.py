@@ -106,3 +106,31 @@ def actions(parent, primary, extra=()):
 
 def help_for(root, title, text):
     return lambda: messagebox.showinfo(title, text, parent=root)
+
+class DependencyNotice:
+    def __init__(self,parent,app,routing,label):
+        self.app=app;self.routing=routing;self.label=label;self.busy=False
+        row=ttk.Frame(parent);row.pack(fill='x',pady=6)
+        self.text=tk.StringVar(value='Checking required tools…')
+        ttk.Label(row,textvariable=self.text,wraplength=600).pack(side='left')
+        self.button=ttk.Button(row,text='Install required tools',command=app.shell.open_setup);self.button.pack(side='right')
+        self.timer=app.root.after(100,self.refresh)
+    def refresh(self):
+        if self.app.closing:return
+        try:
+            stat=self.routing.exe.stat();signature=(stat.st_mtime_ns,stat.st_size)
+        except OSError:signature=None
+        if signature!=getattr(self,'signature',object()) and not self.busy:
+            self.signature=signature;self.busy=True
+            import threading
+            def work():
+                try:self.routing.verify();self.ready=True
+                except (OSError,ValueError):self.ready=False
+                finally:self.busy=False
+            threading.Thread(target=work,daemon=True).start()
+        ready=getattr(self,'ready',False)
+        if self.busy and not hasattr(self,'ready'):
+            self.text.set('Checking required tools…')
+        else:self.text.set(('Ready: '+self.label) if ready else 'Setup needed: '+self.label+'. Use Install required tools.')
+        self.button.configure(state='disabled' if ready else 'normal')
+        self.timer=self.app.root.after(1500,self.refresh)

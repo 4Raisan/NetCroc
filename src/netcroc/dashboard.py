@@ -327,7 +327,7 @@ class Dashboard:
         self.busy=True
         def work():
             try: self.events.put((kind,fn()))
-            except Exception as error: self.events.put(('error',str(error)))
+            except Exception as error: self.events.put(('error',(kind,str(error))))
         threading.Thread(target=work,daemon=True).start()
 
     def refresh_dns(self):
@@ -529,6 +529,10 @@ class Dashboard:
         ttk.Label(guide_top,text='🔑 Get a WireGuard profile',style='Card.TLabel',font=('Segoe UI',11,'bold')).pack(side='left')
         ttk.Button(guide_top,text='Open Proton VPN',command=lambda:webbrowser.open('https://account.protonvpn.com/downloads')).pack(side='right')
         ttk.Label(guide,text='① Sign in   →   ② Downloads → WireGuard → Save .conf   →   ③ Import below',style='Card.TLabel',wraplength=760).pack(anchor='w',pady=(8,0))
+        dependency=ttk.Frame(tab);dependency.pack(fill='x',pady=4)
+        self.vpn_dependency=tk.StringVar(value='WireGuard: checking…')
+        ttk.Label(dependency,textvariable=self.vpn_dependency,wraplength=560).pack(side='left')
+        ttk.Button(dependency,text='Install / update WireGuard',command=self.app.shell.open_setup).pack(side='right')
         self.vpn_table=table(tab,('Profile','Server','Routes','Service','Handshake'),[170,240,130,120,140])
         self.vpn_table.bind('<<TreeviewSelect>>',lambda _event:self._update_vpn_buttons())
         extra=[('Refresh status',self.refresh_vpn),('Remove selected profile',lambda:self.vpn_action('remove')),('Check public IP',lambda:self.check_vpn_ip()),('Save baseline IP',lambda:self.check_vpn_ip(True)),('Install / update WireGuard',self.app.shell.open_setup)]
@@ -585,8 +589,6 @@ class Dashboard:
     def vpn_action(self,action):
         if self.busy:return
         try:
-            if action=='connect' and os.name=='nt' and not self.vpn_store.backend.installed():
-                self.app.shell.open_setup();return
             item=self.selected_vpn()
             # A disconnect clears session but keeps stopping alive until routes/DNS are torn down;
             # block WireGuard during that window, matching the SSH/VLESS connect guards.
@@ -596,6 +598,8 @@ class Dashboard:
                 raise ValueError('The SSH tunnel is connected or still disconnecting. Wait for it to finish before connecting WireGuard.')
             if action=='connect' and vless_live:
                 raise ValueError('VLESS is connected or still disconnecting. Wait for it to finish before connecting WireGuard.')
+            if action=='connect' and os.name=='nt' and not self.vpn_store.backend.installed():
+                self.app.shell.open_setup();return
             if action in ('connect','disconnect'):self.vpn_store.backend.require_admin()
         except (ValueError,PermissionError) as error:
             messagebox.showerror('VPN',str(error));return
@@ -798,6 +802,8 @@ class Dashboard:
                 if not self.diagnostic:dns.atomic(self.folder/'url-study.json',{'results':value,'recommended_for_retest':research.recommendations(value)})
                 self.research_status.set('Study complete. Use successful results as candidates; repeat on your own ISP.')
             elif kind=='vpn':
+                present=bool(self.vpn_store.backend.installed())
+                self.vpn_dependency.set('Ready: WireGuard installed.' if present else 'Setup needed: install WireGuard to connect. It creates the encrypted VPN adapter; Proton supplies your account/profile.')
                 self.vpn_profiles=[item for item,status in value]
                 selected=self.vpn_table.selection()
                 self.vpn_table.delete(*self.vpn_table.get_children())
@@ -822,7 +828,15 @@ class Dashboard:
                     self.vpn_ip.set('Current public IPv4: '+address+comparison+' · this is not a DNS-leak test.')
             elif kind=='message':messagebox.showinfo('NetCroc',value)
             elif kind=='error':
-                self.dns_status.set(value); self.wifi_status.set(value); self.vpn_line.error(value); messagebox.showerror('NetCroc',value)
+                from .errors import explain
+                operation,detail=value if isinstance(value,tuple) else ('general',value)
+                headline,help_text=explain(detail,operation)
+                if operation.startswith('wifi'):
+                    self.wifi_status.set(headline+' — '+help_text)
+                else:
+                    if operation.startswith(('dns','adapters')):self.dns_status.set(headline)
+                    elif operation.startswith('vpn'):self.vpn_line.error(headline)
+                    messagebox.showerror('NetCroc',detail,parent=self.root)
             self._update_vpn_buttons()
         self.root.after(250,self.poll)
 

@@ -35,6 +35,8 @@ class VlessTab(SSHTab):
         tab = ttk.Frame(notebook, padding=16); notebook.add(tab, text='VLESS')
         ttk.Label(tab, text='VLESS connections', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
         ttk.Label(tab, text='1. Paste your link   2. Select the saved profile   3. Connect', wraplength=950).pack(anchor='w', pady=6)
+        from .tool_ui import DependencyNotice
+        self.dependency_notice=DependencyNotice(tab,app,self.routing,'SSH/VLESS routing core')
         self.tree = ttk.Treeview(tab, columns=('server', 'security', 'mode'), show='tree headings', height=8)
         self.tree.heading('#0', text='Profile')
         for name in ('server', 'security', 'mode'): self.tree.heading(name, text=name.title())
@@ -145,6 +147,9 @@ class VlessTab(SSHTab):
         ssh = self.app.dashboard.ssh_tab.session
         if ssh and not ssh.cancel.is_set(): raise ValueError('Disconnect SSH before connecting VLESS.')
         identifier = self.selected(); value = self.store.load(identifier)
+        try:self.routing.verify()
+        except (OSError,ValueError):
+            self.app.shell.open_setup();self.line.error('Install the routing core in Setup before connecting VLESS.');return
         if value['routing'] == 'tun' and not messagebox.askyesno('Whole-PC VLESS' + _TUN_TAG, 'This mode changes PC-wide routes and may interrupt remote access.' + (' It is experimental on this platform.' if _TUN_TAG else '') + ' Connect now?', default='no'): return
         self.session = vless.Session(self.core_folder); session = self.session
         self.ip.set('Checking the tunnel after it starts…')
