@@ -255,5 +255,7 @@ def watchdog(path,transaction=None):
         if not state or state['state']!='pending' or state.get('transaction')!=transaction: return
     manager.restore()
 
+NativeWindowsBackend=WindowsBackend
+
 if os.name != "nt":
     from .posix_network import adapters, DnsBackend as WindowsBackend

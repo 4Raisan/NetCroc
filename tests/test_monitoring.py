@@ -326,7 +326,7 @@ class DnsTests(unittest.TestCase):
             self.assertTrue(control.value&0x1000,'expected SE_DACL_PROTECTED (inherited access removed)')
 
     def backend(self,valid=True):
-        backend=dns.WindowsBackend(); backend.valid_adapter=lambda _state:valid; return backend
+        backend=dns.NativeWindowsBackend(); backend.valid_adapter=lambda _state:valid; return backend
 
     def test_windows_backend_set_builds_primary_then_additional_chain(self):
         backend=self.backend(); state={'index':7,'guid':'x','name':'Wi-Fi'}

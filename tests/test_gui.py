@@ -59,6 +59,14 @@ class GuiTests(unittest.TestCase):
             self.app.show()
             self.assertEqual(check.call_count,2)
 
+    def test_wifi_service_error_stays_on_wifi_page(self):
+        dashboard=self.app.dashboard
+        with patch('netcroc.dashboard.messagebox.showerror') as popup:
+            dashboard.events.put(('error',('wifi','[Errno 1062] The service has not been started.')))
+            dashboard.poll()
+            self.assertIn('Wi-Fi is unavailable',dashboard.wifi_status.get())
+            popup.assert_not_called()
+
     def test_setup_dialog_checks_without_installing(self):
         with patch('netcroc.setup_ui.inspect',return_value=[('Core application',True,'Ready')]), \
              patch.object(self.app.dashboard.ssh_tab.routing,'install') as install:
@@ -215,8 +223,10 @@ finally:app.quit()
     def test_initial_window_matches_the_original_compact_size(self):
         self.root.deiconify();self.root.update_idletasks()
         width,height=(int(value) for value in self.root.geometry().split('+',1)[0].split('x'))
-        self.assertEqual(width,min(1120,max(900,self.root.winfo_screenwidth()-80)))
-        self.assertEqual(height,min(800,max(600,self.root.winfo_screenheight()-120)))
+        from netcroc.desktop import monitor_rect
+        left,top,right,bottom=monitor_rect(self.root)
+        self.assertEqual(width,min(right-left,1120,max(900,self.root.winfo_screenwidth()-80)))
+        self.assertEqual(height,min(bottom-top,800,max(600,self.root.winfo_screenheight()-120)))
 
     def test_vless_paste_validates_before_saving_and_never_connects(self):
         tab=self.app.dashboard.vless_tab
