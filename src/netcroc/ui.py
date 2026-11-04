@@ -37,6 +37,16 @@ def icon_image(color='#38bdf8'):
 class App:
     def __init__(self, root, diagnostic=False):
         self.root, self.diagnostic = root, diagnostic
+        self._center_jobs=[]
+        from .errors import install
+        install()
+        def center_popup(event):
+            window=event.widget
+            if isinstance(window,tk.Toplevel) and not getattr(window,'netcroc_overlay',False) and not getattr(window,'_netcroc_centered',False):
+                window._netcroc_centered=True
+                from .desktop import center_window
+                self._center_jobs.append(root.after_idle(lambda:center_window(window,root) if window.winfo_exists() else None))
+        root.bind_all('<Map>',center_popup,add='+')
         self.store = Settings()
         from .desktop import Preferences
         self.desktop = Preferences(None if diagnostic else self.store.folder/'desktop.json')
@@ -71,6 +81,8 @@ class App:
         root.protocol('WM_DELETE_WINDOW', self.close_window)
         from .desktop import WindowChrome
         self.window = WindowChrome(self)
+        from .desktop import center_window
+        self._center_jobs.append(root.after_idle(lambda:center_window(root,size=(width,height))))
         from .shell import Shell
         self.shell = Shell(root, self)
         notebook = self.shell.book
@@ -463,6 +475,10 @@ class App:
         self.root.after(150, self.poll)
 
     def quit(self):
+        for job in self._center_jobs:
+            try:self.root.after_cancel(job)
+            except tk.TclError:pass
+        self._center_jobs.clear()
         if self.closing:return
         self.closing = True
         self.compare_stop.set()

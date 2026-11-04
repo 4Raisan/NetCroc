@@ -12,6 +12,9 @@ def show(app):
     existing=getattr(app,'setup_dialog',None)
     if existing and existing.winfo_exists():existing.lift();return
     dialog=app.setup_dialog=tk.Toplevel(app.root);dialog.title('NetCroc setup');dialog.geometry('720x440')
+    dialog.transient(app.root)
+    from .desktop import center_window
+    app._center_jobs.append(app.root.after_idle(lambda:center_window(dialog,app.root) if dialog.winfo_exists() else None))
     outer=ttk.Frame(dialog,padding=20);outer.pack(fill='both',expand=True)
     ttk.Label(outer,text='Setup & repairs',font=('Segoe UI',18,'bold')).pack(anchor='w')
     ttk.Label(outer,text='Check what is ready. Optional tools are only needed for their features.',wraplength=570).pack(anchor='w',pady=(4,14))
@@ -66,8 +69,12 @@ def show(app):
                 if value['needed']:wireguard_button.configure(text=('Update WireGuard '+value['latest']) if value['installed'] else 'Install WireGuard',state='normal')
                 else:wireguard_button.configure(text='WireGuard '+value['installed']+' ready',state='disabled')
             elif kind=='wireguard-unavailable':status.set('Tools checked. WireGuard update check unavailable; try again online.')
-            elif kind=='wireguard-done':status.set(value);refresh()
+            elif kind=='wireguard-done':status.set(value);app.dashboard.refresh_vpn();refresh()
             elif kind=='repaired':status.set('Routing core installed and verified.');refresh()
-            else:status.set('Could not complete setup: '+value+'. Check your connection and try again.')
+            else:
+                from .errors import explain
+                headline,help_text=explain(value)
+                status.set(headline+'. '+help_text)
+                __import__('tkinter').messagebox.showerror('Setup could not finish',value,parent=dialog)
         dialog.after(200,poll)
     refresh();poll()

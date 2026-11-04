@@ -66,6 +66,17 @@ def monitor_rect(root, point=None, work=True):
     return 0, 0, root.winfo_screenwidth(), root.winfo_screenheight()
 
 
+def center_window(window,parent=None,size=None):
+    window.update_idletasks()
+    reference=parent or window
+    point=(reference.winfo_rootx()+reference.winfo_width()//2,reference.winfo_rooty()+reference.winfo_height()//2) if parent else reference.winfo_pointerxy()
+    left,top,right,bottom=monitor_rect(reference,point)
+    width=min(window.winfo_width() if window.winfo_width()>1 else window.winfo_reqwidth(),right-left)
+    height=min(window.winfo_height() if window.winfo_height()>1 else window.winfo_reqheight(),bottom-top)
+    if size:width,height=min(size[0],right-left),min(size[1],bottom-top)
+    window.minsize(min(window.minsize()[0],right-left),min(window.minsize()[1],bottom-top))
+    window.geometry(f'{width}x{height}{left+(right-left-width)//2:+d}{top+(bottom-top-height)//2:+d}')
+
 def clamp_position(position, size, rect):
     left, top, right, bottom = rect; width, height = size
     x, y = position
