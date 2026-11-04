@@ -59,19 +59,21 @@ def main():
             # The versioned file is the product. NetCroc.exe is only the compatibility target that
             # releases/NetCroc.bat launches, and a locked one must never cost the build its output.
             asset=output/asset_name(version,label,arch,dev=args.local);shutil.copy2(exe,asset)
-            if args.local:
-                candidate=output/'NetCroc.exe'
-                try:shutil.copy2(exe,candidate)
-                except PermissionError:
-                    print('Kept the existing NetCroc.exe: the running app locks it. Launch '+asset.name+' instead.')
-                else:compatibility=candidate
         elif system=='darwin':
             subprocess.run(['/usr/bin/codesign','--verify','--deep','--strict',str(work/'dist/NetCroc.app')],check=True)
             asset=output/f'NetCroc-v{version}-{label}-{arch}.zip'
-            subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(work/'dist/NetCroc.app'),str(asset)],check=True)
+            package=work/'NetCroc';package.mkdir()
+            shutil.copytree(work/'dist/NetCroc.app',package/'NetCroc.app',symlinks=True)
+            shutil.copy2(ROOT/'tools/install_macos.command',package/'Install.command')
+            (package/'Install.command').chmod(0o755)
+            subprocess.run(['/usr/bin/ditto','-c','-k','--sequesterRsrc','--keepParent',str(package),str(asset)],check=True)
         else:
             asset=output/f'NetCroc-v{version}-{label}-{arch}.tar.gz'
-            with tarfile.open(asset,'w:gz') as tar:tar.add(exe,arcname='NetCroc')
+            with tarfile.open(asset,'w:gz') as tar:
+                tar.add(exe,arcname='NetCroc')
+                installer=ROOT/'tools/install_linux.sh'
+                info=tar.gettarinfo(str(installer),arcname='Install.sh');info.mode=0o755
+                with installer.open('rb') as file:tar.addfile(info,file)
         metadata={'asset':asset.name,'sha256':hashlib.sha256(asset.read_bytes()).hexdigest(),'source_match':True,'frozen_smoke_passed':True}
         if compatibility is not None:
             metadata['compatibility_asset']=compatibility.name
