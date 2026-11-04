@@ -11,10 +11,10 @@ from .prerequisites import inspect
 def show(app):
     existing=getattr(app,'setup_dialog',None)
     if existing and existing.winfo_exists():existing.lift();return
-    dialog=app.setup_dialog=tk.Toplevel(app.root);dialog.title('NetCroc setup');dialog.geometry('720x520')
+    dialog=app.setup_dialog=tk.Toplevel(app.root);dialog.title('NetCroc setup');dialog.geometry('720x520');dialog._netcroc_centered=True
     dialog.transient(app.root)
     from .desktop import center_window
-    app._center_jobs.append(app.root.after_idle(lambda:center_window(dialog,app.root) if dialog.winfo_exists() else None))
+    app._center_jobs.append(app.root.after_idle(lambda:center_window(dialog,app.root,size=(720,520)) if dialog.winfo_exists() else None))
     outer=ttk.Frame(dialog,padding=20);outer.pack(fill='both',expand=True)
     ttk.Label(outer,text='Setup & repairs',font=('Segoe UI',18,'bold')).pack(anchor='w')
     ttk.Label(outer,text='Check what is ready. Optional tools are only needed for their features.',wraplength=570).pack(anchor='w',pady=(4,14))

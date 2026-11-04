@@ -69,10 +69,13 @@ class GuiTests(unittest.TestCase):
             popup.assert_not_called()
 
     def test_setup_dialog_checks_without_installing(self):
+        self.root.deiconify()
         with patch('netcroc.setup_ui.inspect',return_value=[('Core application',True,'Ready')]), \
              patch.object(self.app.dashboard.ssh_tab.routing,'install') as install:
             self.app.shell.open_setup()
             self.assertTrue(self.app.setup_dialog.winfo_exists())
+            self.root.update_idletasks()
+            self.assertGreaterEqual(self.app.setup_dialog.winfo_height(),480)
             install.assert_not_called()
             self.app.setup_dialog.destroy()
 

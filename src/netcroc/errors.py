@@ -27,7 +27,7 @@ def install():
         parent=kwargs.get('parent') or tk._default_root
         if parent is None:return original(title,message,**kwargs)
         headline,help_text=explain(message,title or "")
-        dialog=tk.Toplevel(parent);dialog.title(title or 'NetCroc');dialog.transient(parent)
+        dialog=tk.Toplevel(parent);dialog._netcroc_centered=True;dialog.title(title or 'NetCroc');dialog.transient(parent)
         body=ttk.Frame(dialog,padding=20);body.pack(fill='both',expand=True)
         ttk.Label(body,text=headline,font=('Segoe UI',14,'bold'),wraplength=480).pack(anchor='w')
         ttk.Label(body,text=help_text,wraplength=480,justify='left').pack(anchor='w',pady=12)
