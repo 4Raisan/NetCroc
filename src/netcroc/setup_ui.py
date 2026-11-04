@@ -11,7 +11,7 @@ from .prerequisites import inspect
 def show(app):
     existing=getattr(app,'setup_dialog',None)
     if existing and existing.winfo_exists():existing.lift();return
-    dialog=app.setup_dialog=tk.Toplevel(app.root);dialog.title('NetCroc setup');dialog.geometry('720x440')
+    dialog=app.setup_dialog=tk.Toplevel(app.root);dialog.title('NetCroc setup');dialog.geometry('720x520')
     dialog.transient(app.root)
     from .desktop import center_window
     app._center_jobs.append(app.root.after_idle(lambda:center_window(dialog,app.root) if dialog.winfo_exists() else None))
@@ -47,6 +47,11 @@ def show(app):
     ttk.Button(buttons,text='Check again',command=refresh).pack(side='left',padx=(0,8))
     ttk.Button(buttons,text='Install / repair routing core',command=repair).pack(side='left',padx=(0,8))
     def manage_wireguard():
+        if __import__('os').name!='nt':
+            import sys
+            command='brew install wireguard-tools' if sys.platform=='darwin' else 'Install wireguard-tools using your distribution package manager (Ubuntu/Debian: sudo apt install wireguard-tools). '
+            __import__('tkinter').messagebox.showinfo('WireGuard tools',command+' Then choose Check again. NetCroc manages the VPN profile after installation.',parent=dialog)
+            return
         if busy['value']:return
         busy['value']=True;status.set('Preparing official WireGuard installer. Approve Windows if asked…')
         def work():
@@ -55,7 +60,7 @@ def show(app):
         threading.Thread(target=work,daemon=True).start()
     wireguard_button=ttk.Button(buttons,text='Install / update WireGuard',command=manage_wireguard)
     wireguard_button.pack(side='left')
-    ttk.Label(outer,text='NetCroc installs or updates WireGuard using its signed official installer. Windows approval may be required. Routing core is downloaded from its official release and checked against a pinned SHA-256.',wraplength=570,style='Muted.TLabel').pack(anchor='w',pady=10)
+    ttk.Label(outer,text='Windows: NetCroc manages the signed WireGuard installer. Linux/macOS: use the system WireGuard tools. Routing core is downloaded from its official release and checked against a pinned SHA-256.',wraplength=570,style='Muted.TLabel').pack(anchor='w',pady=10)
     def poll():
         if not dialog.winfo_exists():return
         while not events.empty():
@@ -63,7 +68,8 @@ def show(app):
             if kind=='checked':
                 result.set('\n'.join(('Ready' if ok else 'Needs attention')+'  ·  '+name+'\n    '+note for name,ok,note in value))
                 installed=any(name=='WireGuard' and ok for name,ok,note in value)
-                wireguard_button.configure(text='Check / update WireGuard' if installed else 'Install WireGuard',state='normal')
+                if __import__('os').name=='nt':wireguard_button.configure(text='Check / update WireGuard' if installed else 'Install WireGuard',state='normal')
+                else:wireguard_button.configure(text='WireGuard installed' if installed else 'WireGuard setup help',state='disabled' if installed else 'normal')
                 status.set('Checks complete.');
             elif kind=='wireguard-status':
                 if value['needed']:wireguard_button.configure(text=('Update WireGuard '+value['latest']) if value['installed'] else 'Install WireGuard',state='normal')
