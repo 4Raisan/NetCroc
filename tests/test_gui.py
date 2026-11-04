@@ -25,6 +25,7 @@ class GuiTests(unittest.TestCase):
                 result.extend(texts(child))
             return result
         shell=self.app.shell;dashboard=self.app.dashboard
+        self.assertIn('Notebook.client',str(__import__('tkinter').ttk.Style(self.root).layout('Quiet.TNotebook')))
         self.assertNotIn('Check setup',texts(shell.primary['Home']))
         self.assertIn('Check setup',texts(shell.sidebar))
         live=texts(dashboard.tab_live)

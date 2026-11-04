@@ -36,7 +36,7 @@ def install(style,master,palette,owner):
         element=state_element
         style.layout(target,[(element,{'sticky':'nswe','children':[('Button.padding',{'sticky':'nswe','children':[('Button.label',{'sticky':'nswe'})]})]})])
     style.layout('Card.TFrame',[('NetCroc.card',{'sticky':'nswe'})])
-    style.layout('Quiet.TNotebook',[('NetCroc.card',{'sticky':'nswe'})])
+    style.layout('Quiet.TNotebook',[('NetCroc.card',{'sticky':'nswe','children':[('Notebook.client',{'sticky':'nswe'})]})])
     style.configure('TButton',padding=(10,4))
     style.configure('SidebarAction.TButton',padding=(5,4))
     style.configure('Treeview',borderwidth=0)
