@@ -1,16 +1,27 @@
-<p align="center"><img src="assets/netcroc.png" width="96" alt="NetCroc logo"></p>
+<p align="center"><img src="assets/netcroc-banner.svg" width="440" alt="NetCroc — Your quiet network companion."></p>
 
 # NetCroc — Your quiet network companion.
 
 A desktop network monitor with live speeds, usage history, saved Wi-Fi and optional connection tools.
 
-[Download the latest release](https://github.com/4Raisan/NetCroc/releases/latest) · [Setup guide](#getting-started) · [Technical structure](docs/STRUCTURE.md)
+[Download the latest release](https://github.com/4Raisan/NetCroc/releases/latest) · [Setup guide](#getting-started) · [Technical structure](docs/STRUCTURE.md) · [MIT license](LICENSE)
 
 ## Getting started
 
-**Windows:** download the versioned `.exe` from Releases and open it. Python is included. NetCroc starts monitoring automatically; optional VPN tools do not need to be installed for monitoring.
+Choose **Setup** to install or **Portable** to run without installation. Download the matching file from the [latest release](https://github.com/4Raisan/NetCroc/releases/latest). Python is included.
 
-**macOS/Linux:** native packages, where available, are listed on Releases. For source setup, use the steps below. New platform behavior still needs native hardware validation; see the support table.
+| Platform | Install | Run without installing |
+|---|---|---|
+| Windows 64-bit | `windows-x64-Setup.exe` | `windows-x64-Portable.exe` |
+| Linux 64-bit | `linux-x64-Setup.sh` | `linux-x64-Portable.sh` |
+| Mac Apple Silicon | `macos-arm64-Setup.command` | `macos-arm64-Portable.command` |
+| Mac Intel | `macos-x64-Setup.command` | `macos-x64-Portable.command` |
+
+Every filename begins with `NetCroc-v<version>-`. Double-click Windows EXEs. On Linux/macOS, run `bash <downloaded-file>` in a terminal. The scripts contain the native application.
+
+Windows Setup adds shortcuts and an uninstaller. Linux Setup installs to `~/.local/bin/NetCroc`; Mac Setup installs to `~/Applications/NetCroc.app`. Mac builds are not notarized; see [platform support](#platform-support-and-limits).
+
+NetCroc starts monitoring when opened. Use **Check setup** for optional VPN tools.
 
 | What you want | Where to go |
 |---|---|
@@ -77,12 +88,14 @@ python tools/release.py --build
 python tools/package_release.py
 ```
 
-The Windows local output is one versioned EXE, currently `releases/NetCroc-v0.4.8-windows-x64.exe`. There is no duplicate unversioned EXE. `NetCroc.bat` launches the current versioned file. `tools/package_release.py` builds on the host OS; GitHub Actions provides native Windows, Linux and macOS runners. Build dependencies include PyInstaller 6.22.3.
+`tools/package_release.py` builds and verifies the application on the host OS. Windows packaging requires Inno Setup 6 and produces Setup and Portable EXEs. Linux/macOS packaging produces standalone Setup and Portable scripts. GitHub Actions provides native runners for each platform. Build dependencies include PyInstaller 6.22.3.
+
+Generated downloads belong in the ignored local `releases/` folder. `NetCroc.bat` launches the current versioned Windows Portable EXE.
 
 Source and release history are distinct: older published release tags may refer to an earlier source snapshot, as disclosed in those release notes. Generated evidence and archived experiments stay in ignored `test-artifacts/` and `Deep-Shit/` folders.
 
 [Release notes](docs/RELEASE-NOTES.md) · [UI design decisions](docs/UI-DESIGN.md)
 
-### Local installers and portable downloads
+## License
 
-The ignored `releases/` folder contains Windows Setup and Portable EXEs, plus standalone Linux `.sh` and macOS `.command` Setup/Portable files. Setup installs into your user account and portable runs without installing. Linux/macOS scripts contain their native application payload; no source checkout is required. The current Linux/macOS payload remains the verified v0.4.8 build; all platforms are rebuilt by native CI for each release.
+NetCroc is licensed under the [MIT License](LICENSE). Third-party libraries and optional tools retain their own licenses.
