@@ -77,8 +77,12 @@ python tools/release.py --build
 python tools/package_release.py
 ```
 
-The Windows local output is one versioned EXE, currently `releases/NetCroc-v0.4.7-windows-x64.exe`. There is no duplicate unversioned EXE. `NetCroc.bat` launches the current versioned file. `tools/package_release.py` builds on the host OS; GitHub Actions provides native Windows, Linux and macOS runners. Build dependencies include PyInstaller 6.22.3.
+The Windows local output is one versioned EXE, currently `releases/NetCroc-v0.4.8-windows-x64.exe`. There is no duplicate unversioned EXE. `NetCroc.bat` launches the current versioned file. `tools/package_release.py` builds on the host OS; GitHub Actions provides native Windows, Linux and macOS runners. Build dependencies include PyInstaller 6.22.3.
 
 Source and release history are distinct: older published release tags may refer to an earlier source snapshot, as disclosed in those release notes. Generated evidence and archived experiments stay in ignored `test-artifacts/` and `Deep-Shit/` folders.
 
 [Release notes](docs/RELEASE-NOTES.md) · [UI design decisions](docs/UI-DESIGN.md)
+
+### Local installers and portable downloads
+
+The ignored `releases/` folder contains Windows Setup and Portable EXEs, plus standalone Linux `.sh` and macOS `.command` Setup/Portable files. Setup installs into your user account and portable runs without installing. Linux/macOS scripts contain their native application payload; no source checkout is required. The current Linux/macOS payload remains the verified v0.4.8 build; all platforms are rebuilt by native CI for each release.

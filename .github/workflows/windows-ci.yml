@@ -13,7 +13,7 @@ on:
       tag:
         description: Release tag (vX.Y.Z)
         type: string
-        default: v0.4.7
+        default: v0.4.8
 
 permissions:
   contents: read
@@ -123,7 +123,7 @@ jobs:
         shell: bash
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]] || exit 2
-          test "$(find runnable-packages -type f | wc -l)" -eq 4
+          test "$(find runnable-packages -type f | wc -l)" -eq 8
           FLAGS=(--latest)
           if [[ "$RELEASE_TAG" == *-beta.* ]]; then FLAGS=(--prerelease); fi
           gh release create "$RELEASE_TAG" runnable-packages/* --target "$GITHUB_SHA" "${FLAGS[@]}" --title "NetCroc $RELEASE_TAG" --notes-file docs/RELEASE-NOTES.md
