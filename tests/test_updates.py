@@ -13,6 +13,7 @@ class UpdateTests(unittest.TestCase):
   self.assertGreater(updates.version_key('v0.4.0'),updates.version_key('v0.4.0-beta.3'))
   self.assertGreater(updates.version_key('v0.4.8'),updates.version_key('v0.4.0-beta.3'))
   self.assertIsNone(updates.version_key('v0.4.0-unknown'))
+ @patch.object(updates,'VERSION','0.4.7')
  def test_releases_ignore_drafts_and_compare_versions(self):
   releases=[{'tag_name':'v0.4.8','draft':False},{'tag_name':'v9.0.0','draft':True}]
   result=updates.check(lambda *args,**kwargs:Response(releases))
