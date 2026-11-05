@@ -22,7 +22,7 @@ def release_version():
     return match.group(1).split('+',1)[0]
 
 def asset_name(version,label,arch,dev=False):
-    return f'NetCroc-v{version}-{label}-{arch}.exe'
+    return f'NetCroc-v{version}-{label}-{arch}'+'-Portable'+'.exe'
 
 def main():
     parser=argparse.ArgumentParser()
@@ -74,7 +74,13 @@ def main():
                 installer=ROOT/'tools/install_linux.sh'
                 info=tar.gettarinfo(str(installer),arcname='Install.sh');info.mode=0o755
                 with installer.open('rb') as file:tar.addfile(info,file)
-        metadata={'asset':asset.name,'sha256':hashlib.sha256(asset.read_bytes()).hexdigest(),'source_match':True,'frozen_smoke_passed':True}
+        if system=='windows':
+            compiler=shutil.which('ISCC.exe') or str(Path(os.environ.get('ProgramFiles(x86)','C:/Program Files (x86)'))/'Inno Setup 6/ISCC.exe')
+            subprocess.run([compiler,'/DAppVersion='+version,'/DPortablePath='+str(asset),'/O'+str(output),str(ROOT/'tools/windows-setup.iss')],check=True)
+        else:
+            subprocess.run([sys.executable,str(ROOT/'tools/local_native_scripts.py'),str(output),'--output',str(output)],check=True)
+            asset.unlink()
+        metadata={'asset':asset.name,'sha256':hashlib.sha256(exe.read_bytes()).hexdigest(),'source_match':True,'frozen_smoke_passed':True}
         if compatibility is not None:
             metadata['compatibility_asset']=compatibility.name
             metadata['compatibility_sha256']=hashlib.sha256(compatibility.read_bytes()).hexdigest()

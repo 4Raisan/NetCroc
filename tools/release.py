@@ -24,7 +24,7 @@ def release_version():
 def asset_name(kind=None):
     arch='arm64' if platform.machine().lower() in ('arm64','aarch64') else 'x64'
     version=release_version()
-    return f"{CONFIG['exe']}-v{version}-windows-{arch}.exe"
+    return f"{CONFIG['exe']}-v{version}-windows-{arch}-Portable.exe"
 
 
 def source_files():
@@ -95,7 +95,7 @@ def check():
             if not destination.exists() and not target.startswith('releases/'):
                 raise ValueError('Broken README link: ' + target)
     for file in (ROOT / 'releases').glob('*'):
-        allowed = ('.exe', '.bat')
+        allowed = ('.exe', '.bat', '.sh', '.command')
         if file.is_file() and file.suffix.lower() not in allowed and file.name!='NetCroc':
             raise ValueError('Unexpected release file: ' + file.name)
     print('Source syntax, assets, README links and runnable release layout passed.')
