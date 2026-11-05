@@ -55,6 +55,8 @@ class SSHTab:
         self.rates = tk.StringVar(value='')
         self.rates_label = ttk.Label(tab, textvariable=self.rates, font=('Segoe UI', 16))
         ttk.Label(tab, text='Closing NetCroc stops this tunnel.', style='Muted.TLabel').pack(anchor='w', pady=6)
+        self.tree.pack_forget()
+        self.tree.pack(fill='both', expand=True, pady=6, before=self.bar.bar)
         self._apply_empty(0)
         if not diagnostic:
             self.refresh()
@@ -88,7 +90,7 @@ class SSHTab:
         self._update_buttons()
 
     def _apply_empty(self, count):
-        self.tree.configure(height=8)
+        self.tree.configure(height=3)
         self.tree.pack_configure(expand=True)
         if count:
             self.empty_hint.pack_forget()

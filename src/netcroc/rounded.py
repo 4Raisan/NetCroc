@@ -18,7 +18,7 @@ def install(style,master,palette,owner):
         return element
     if not hasattr(owner,'rounded_photos'):owner.rounded_photos={}
     dark=palette['base'].startswith(('#1','#2'))
-    border='#809b8d' if not dark else '#738b80'
+    border=palette['border']
     for name,fill in [('normal',palette['button']),('hover',palette['button_active']),('primary',palette['primary']),('selected',palette['segment_selected']),('card',palette['card']),('field',palette['field'])]:
         surface(name,fill,border if name not in ('primary','card') else palette['primary'] if name=='primary' else palette['border'],6)
     for target in ('TButton','SidebarAction.TButton','Nav.TButton','ToolNav.TButton','Primary.TButton','Update.TButton','Copy.TButton'):
@@ -36,7 +36,9 @@ def install(style,master,palette,owner):
         element=state_element
         style.layout(target,[(element,{'sticky':'nswe','children':[('Button.padding',{'sticky':'nswe','children':[('Button.label',{'sticky':'nswe'})]})]})])
     style.layout('Card.TFrame',[('NetCroc.card',{'sticky':'nswe'})])
-    style.layout('Quiet.TNotebook',[('NetCroc.card',{'sticky':'nswe','children':[('Notebook.client',{'sticky':'nswe'})]})])
+    surface('page',palette['base'],palette['border'],10)
+    style.layout('Quiet.TNotebook',[('NetCroc.page',{'sticky':'nswe','children':[('Notebook.client',{'sticky':'nswe'})]})])
+    style.configure('Quiet.TNotebook',bordercolor=palette['base'],lightcolor=palette['base'],darkcolor=palette['base'])
     style.configure('TButton',padding=(10,4))
     style.configure('SidebarAction.TButton',padding=(5,4))
     style.configure('Treeview',borderwidth=0)

@@ -212,7 +212,7 @@ class WindowChrome:
     def bind_drag(self, widget):
         widget.bind('<ButtonPress-1>', self.drag_start)
         widget.bind('<B1-Motion>', self.drag)
-        widget.bind('<Double-Button-1>', self.maximize)
+        # Header double-click does not maximize the compact window.
 
     def drag_start(self, event):
         self.drag_offset = event.x_root-self.root.winfo_rootx(), event.y_root-self.root.winfo_rooty()

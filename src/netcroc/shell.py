@@ -81,8 +81,6 @@ class Shell:
         ttk.Label(brand, text='NetCroc', font=('Segoe UI', 17, 'bold')).pack(anchor='w')
         ttk.Label(brand, text='Your quiet network companion.', style='Muted.TLabel',font=('Segoe UI',9)).pack(anchor='w')
         ttk.Button(header, text='×', width=3, command=app.close_window).pack(side='right')
-        self.size_button=ttk.Button(header, text='□', width=3, command=app.window.maximize); self.size_button.pack(side='right',padx=4)
-        app.window.size_button=self.size_button
         ttk.Button(header, text='—', width=3, command=app.window.minimize).pack(side='right')
         ttk.Button(header, text='To tray', command=app.hide).pack(side='right',padx=8)
         for widget in [header,brand,*brand.winfo_children(),*(w for w in header.winfo_children() if isinstance(w,ttk.Label))]: app.window.bind_drag(widget)
