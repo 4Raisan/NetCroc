@@ -2,9 +2,9 @@
 import queue
 import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import webbrowser
-from . import updates
+from . import updates, updater
 
 class About:
     def __init__(self,app):
@@ -26,10 +26,54 @@ class About:
         except queue.Empty:self.root.after(150,self.poll);return
         self.busy=False
         self.latest.set('v'+updates.VERSION+' · '+('Outdated' if data['status']=='available' else 'Latest' if data['status']=='current' else 'Check unavailable'))
+        self.release=data
         self.update_url=data.get('url',updates.REPO+'/releases')
         if data['status']=='available':self.summary.set('Update available: '+data['version'])
         elif data['status']=='current':self.summary.set('No newer release found · '+data['version'])
         else:self.summary.set('Update check unavailable')
+    def install(self):
+        if self.busy or self.app.closing:
+            return
+        release = getattr(self, 'release', {})
+        if release.get('status') != 'available':
+            return
+        if not messagebox.askyesno('Update NetCroc',
+                                   f"Download {release['version']} and restart NetCroc? Active connections may be interrupted.",
+                                   parent=self.root):
+            return
+        self.busy = True
+        self.summary.set('Downloading and verifying update…')
+        self.latest.set('Downloading update…')
+
+        def work():
+            try:
+                self.events.put(updater.stage_update(release))
+            except Exception as error:
+                self.events.put(error)
+
+        threading.Thread(target=work, daemon=True).start()
+        self.root.after(150, self.poll_install)
+
+    def poll_install(self):
+        if self.app.closing:
+            return
+        try:
+            result = self.events.get_nowait()
+        except queue.Empty:
+            self.root.after(150, self.poll_install)
+            return
+        try:
+            if isinstance(result, Exception):
+                raise result
+            updater.launch_update(*result)
+        except Exception as error:
+            self.busy = False
+            self.latest.set('v'+updates.VERSION+' · Outdated')
+            self.summary.set('Update available: '+self.release['version'])
+            messagebox.showerror('Update failed', str(error), parent=self.root)
+            return
+        self.app.quit()
+
     def show(self):
         old=getattr(self,'dialog',None)
         if old and old.winfo_exists():old.lift();return

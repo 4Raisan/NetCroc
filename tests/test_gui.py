@@ -45,7 +45,7 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(len(rectangles),3)
         shell.about.summary.set('Update available: v9.0.0');self.root.update_idletasks()
         self.assertEqual(shell.update_button.winfo_manager(),'pack')
-        self.assertEqual(shell.update_button.cget('text'),'Update available ↗')
+        self.assertEqual(shell.update_button.cget('text'),'Update now')
         self.assertEqual(shell.update_button.cget('style'),'Update.TButton')
         shell.about.summary.set('No newer release found');self.root.update_idletasks()
         self.assertEqual(shell.update_button.winfo_manager(),'')

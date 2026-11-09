@@ -1,9 +1,9 @@
-"""Release checks show information only and never install updates."""
+"""Discover published NetCroc releases and their download metadata."""
 import json
 import re
 import urllib.request
 
-VERSION='0.4.8'
+VERSION='0.4.9'
 REPO='https://github.com/4Raisan/NetCroc'
 API='https://api.github.com/repos/4Raisan/NetCroc/releases?per_page=30'
 
@@ -24,7 +24,7 @@ def check(opener=urllib.request.urlopen):
     for item in items:
         if not isinstance(item,dict) or item.get('draft'):continue
         tag=item.get('tag_name','');key=version_key(tag)
-        if key:found.append((key,tag))
+        if key:found.append((key,tag,item))
     if not found:return {'status':'unavailable'}
-    key,tag=max(found)
-    return {'status':'available' if key>version_key(VERSION) else 'current','version':tag,'url':REPO+'/releases'}
+    key,tag,item=max(found,key=lambda entry: entry[:2])
+    return {'status':'available' if key>version_key(VERSION) else 'current','version':tag,'url':REPO+'/releases','assets':item.get('assets') or []}

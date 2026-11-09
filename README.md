@@ -23,6 +23,8 @@ Windows Setup adds shortcuts and an uninstaller. Linux Setup installs to `~/.loc
 
 NetCroc starts monitoring when opened. Use **Check setup** for optional VPN tools.
 
+On packaged Windows x64 builds with the updater, click **Update now** when a newer stable release is available. NetCroc verifies the download, applies it after closing and reopens. For older builds, macOS and Linux, download the matching file from Releases.
+
 | What you want | Where to go |
 |---|---|
 | Current download/upload speed | Home or Live traffic |

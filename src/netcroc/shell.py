@@ -149,7 +149,7 @@ class Shell:
         themes.pack(fill='x');themes.bind('<<ComboboxSelected>>',lambda _event:self.apply_theme())
         # The startup release check (about.py) only surfaces this action when a newer
         # release exists; every other outcome stays hidden instead of showing status text.
-        self.update_button=ttk.Button(foot,text='Update available ↗',style='Update.TButton',width=14,command=lambda:webbrowser.open(getattr(self.about,'update_url',REPO+'/releases')))
+        self.update_button=ttk.Button(foot,text='Update now',style='Update.TButton',width=14,command=self.about.install)
         def update_badge(*_):
             if self.about.summary.get().startswith('Update available:'):self.update_button.pack(fill='x',pady=2)
             else:self.update_button.pack_forget()
