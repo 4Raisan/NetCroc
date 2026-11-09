@@ -1,9 +1,7 @@
-# NetCroc 0.4.8
+# NetCroc 0.4.9
 
-- Removed maximize and header double-click maximize.
-- Reduced the SSH/TLS table minimum height to keep connection feedback visible.
-- Softer rounded page borders and button outlines.
-- Windows offers an installer with shortcuts/uninstall and a portable EXE.
-- Linux and macOS offer standalone Setup and Portable scripts containing the native application.
+- **Update now** downloads, verifies and applies newer stable releases on packaged Windows x64 builds, then reopens NetCroc.
+- Installed builds use the matching Setup EXE. Portable builds replace their executable.
+- Install this release manually once to enable future in-app updates. Linux and macOS continue to use their Setup and Portable downloads.
 
-macOS builds are ad-hoc signed, not notarized. Native CI checks do not replace physical hardware testing of network-changing operations.
+Windows, Linux, Mac Intel and Apple Silicon downloads are included. Mac builds are not notarized.
