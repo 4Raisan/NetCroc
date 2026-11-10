@@ -94,7 +94,7 @@ python tools/package_release.py
 
 Generated downloads belong in the ignored local `releases/` folder. `NetCroc.bat` launches the current versioned Windows Portable EXE.
 
-Source and release history are distinct: older published release tags may refer to an earlier source snapshot, as disclosed in those release notes. Generated evidence and archived experiments stay in ignored `test-artifacts/` and `Deep-Shit/` folders.
+Source and release history are distinct: older published release tags may refer to an earlier source snapshot, as disclosed in those release notes. Generated test artifacts are excluded from version control.
 
 [Release notes](docs/RELEASE-NOTES.md) · [UI design decisions](docs/UI-DESIGN.md)
 
