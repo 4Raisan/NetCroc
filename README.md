@@ -34,6 +34,10 @@ On packaged Windows x64 builds with the updater, click **Update now** when a new
 | Use a WireGuard VPN | VPN → Install/update WireGuard → get/import a provider `.conf` → Connect |
 | Use SSH/TLS or VLESS | Open its page, install required tools if shown, add your server account/profile |
 
+### Updates
+
+On Windows, follow the in-app update prompt when an update is offered. On Linux and macOS, download the matching Setup or Portable file from the [latest release](https://github.com/4Raisan/NetCroc/releases/latest).
+
 ### Why are extra tools needed?
 
 - **WireGuard** creates the encrypted VPN adapter and connection. **Proton or another provider** supplies the account, server and `.conf` profile. NetCroc manages installation/updates of the official signed client on Windows.
